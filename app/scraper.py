@@ -1,5 +1,5 @@
 from playwright.sync_api import sync_playwright
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from app.models import Attachment, Announcement
 from bs4 import BeautifulSoup
 
@@ -15,7 +15,7 @@ def parse_date(date_str: str) -> date:
 def scrape_announcements() -> list[Announcement]:
     """Fetch announcements by intercepting the API call in a real browser."""
     announcements = []
-    scraped_at = datetime.utcnow()
+    scraped_at = datetime.now(timezone.utc)
 
     with sync_playwright() as p:
         # Launch an invisible Chromium browser
