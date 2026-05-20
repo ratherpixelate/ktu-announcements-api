@@ -13,7 +13,8 @@ class Attachment(BaseModel):
 class Announcement(BaseModel):
     id: str
     title: str
-    description: str | None = None
+    description_html: str | None = None
+    description_text: str | None = None
     date: date
     is_new: bool
     attachments: list[Attachment]

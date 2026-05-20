@@ -1,6 +1,7 @@
 from playwright.sync_api import sync_playwright
 from datetime import datetime, date
 from app.models import Attachment, Announcement
+from bs4 import BeautifulSoup
 
 KTU_URL = "https://ktu.edu.in/Menu/announcements"
 
@@ -42,11 +43,19 @@ def scrape_announcements() -> list[Announcement]:
                             name=att.get("title", "Document"),
                             encrypt_id=encrypt_id
                         ))
+                
+                raw_html = item.get("message")
+                clean_text = None
+
+                if raw_html:
+                    clean_text = BeautifulSoup(raw_html, "html.parser").get_text(separator=" ").strip()
+
 
                 announcement = Announcement(
                     id=str(item["id"]),
                     title=item.get("subject", ""),
-                    description=item.get("message"),
+                    description_html=raw_html,
+                    description_text=clean_text,
                     date=parse_date(item.get("announcementDate", "")),
                     is_new=item.get("status") == 1,
                     attachments=attachments,
