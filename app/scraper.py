@@ -46,6 +46,7 @@ def scrape_announcements() -> list[Announcement]:
                 announcement = Announcement(
                     id=str(item["id"]),
                     title=item.get("subject", ""),
+                    description=item.get("message"),
                     date=parse_date(item.get("announcementDate", "")),
                     is_new=item.get("status") == 1,
                     attachments=attachments,
