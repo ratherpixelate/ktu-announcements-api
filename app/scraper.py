@@ -19,7 +19,10 @@ def scrape_announcements() -> list[Announcement]:
 
     with sync_playwright() as p:
         # Launch an invisible Chromium browser
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-setuid-sandbox"]
+        )
         page = browser.new_page()
 
         print("Opening KTU website and waiting for API response...")
