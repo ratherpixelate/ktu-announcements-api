@@ -41,10 +41,14 @@ def health_check():
 @app.get("/announcements", response_model=AnnouncementsResponse)
 def get_announcements(
     limit: int | None = Query(None, description="Max number of announcements to return"),
-    new_only: bool = Query(False, description="Only return announcements marked as 'New'")
+    new_only: bool = Query(False, description="Only return announcements marked as 'New'"),
+    scheme: str | None = Query(None, description="Filter by scheme year")
 ):
     """Get all announcements, optionally filtered by limit or new status."""
     results = cache.cached_announcements
+
+    if scheme:
+        results = [a for a in results if scheme in a.schemes]
 
     if new_only:
         results = [a for a in results if a.is_new]
