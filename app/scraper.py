@@ -2,6 +2,7 @@ from playwright.sync_api import sync_playwright
 from datetime import datetime, date, timezone
 from app.models import Attachment, Announcement
 from bs4 import BeautifulSoup
+from app.utils import extract_schemes
 import re
 
 KTU_URL = "https://ktu.edu.in/Menu/announcements"
@@ -57,8 +58,10 @@ def scrape_announcements() -> list[Announcement]:
 
                 title = item.get("subject", "")
                 full_text = f"{title} {clean_text or ''}"
-                found_schemes = re.findall(r'(20\d{2})\s*scheme', full_text, re.IGNORECASE)
-                unique_schemes = list(set(found_schemes))
+                
+                #Smart Parser Logic
+                ann_date = parse_date(item.get("announcementDate", ""))
+                unique_schemes = extract_schemes(ann_date, full_text)
 
                 announcement = Announcement(
                     id=str(item["id"]),

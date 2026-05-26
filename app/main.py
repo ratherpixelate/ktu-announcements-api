@@ -48,7 +48,10 @@ def get_announcements(
     results = cache.cached_announcements
 
     if scheme:
-        results = [a for a in results if scheme in a.schemes]
+        results = [
+            a for a in results 
+            if scheme in a.schemes or "General" in a.schemes
+        ]
 
     if new_only:
         results = [a for a in results if a.is_new]
