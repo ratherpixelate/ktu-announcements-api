@@ -18,6 +18,7 @@ class Announcement(BaseModel):
     date: date
     is_new: bool
     attachments: list[Attachment]
+    schemes: list[str] = []
     scraped_at: datetime
 
 
