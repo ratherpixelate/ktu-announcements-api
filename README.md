@@ -9,12 +9,13 @@ An unofficial REST API that scrapes and serves announcements from the [APJ Abdul
 
 The API is publicly hosted and ready to use:
 
-**Base URL:** `https://ktu-announcements-api-wxk8.onrender.com`
+**Base URL:** [https://ktu-announcements-api-wxk8.onrender.com](https://ktu-announcements-api-wxk8.onrender.com)
 
 | Endpoint | Description |
 |---|---|
 | `GET /announcements` | Returns all cached announcements |
 | `GET /announcements?limit=5` | Returns the N most recent announcements |
+| `GET /download/{encrypt_id}` | Downloads an attached document directly as a PDF |
 | `GET /health` | API status and cache info |
 | `GET /docs` | Interactive Swagger UI documentation |
 
@@ -25,6 +26,7 @@ The API is publicly hosted and ready to use:
 |---|---|
 | [FastAPI](https://fastapi.tiangolo.com/) | Web framework & API routing |
 | [Playwright](https://playwright.dev/python/) | Headless browser scraping (bypasses reCAPTCHA) |
+| [httpx](https://www.python-httpx.org/) | High-speed async API requests & file downloading |
 | [APScheduler](https://apscheduler.readthedocs.io/) | Scheduled background jobs for cache refresh |
 | [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/) | HTML parsing |
 | [Uvicorn](https://www.uvicorn.org/) | ASGI server |
@@ -86,6 +88,12 @@ curl https://ktu-announcements-api-wxk8.onrender.com/announcements
 curl https://ktu-announcements-api-wxk8.onrender.com/announcements?limit=5
 ```
 
+**Download an attachment:**
+```bash
+# Use -O and -J to let curl automatically save the file with its original name
+curl -O -J https://ktu-announcements-api-wxk8.onrender.com/download/{encrypt_id}
+```
+
 **Check API health and cache status:**
 ```bash
 curl https://ktu-announcements-api-wxk8.onrender.com/health
@@ -94,7 +102,7 @@ curl https://ktu-announcements-api-wxk8.onrender.com/health
 ## ⚙️ How It Works
 
 1. On startup, the app uses **Playwright** to launch a headless Chromium browser and scrape announcements from the KTU website — bypassing reCAPTCHA in the process.
-2. The scraped data is stored **in-memory** as a cache.
+2. The scraped announcement data and the active authentication token are stored in a mutable **in-memory dictionary** to ensure thread-safe sharing between the background workers and FastAPI routes.
 3. **APScheduler** runs a background job at regular intervals to refresh the cache automatically, keeping announcements up to date without manual intervention.
 4. **FastAPI** exposes the cached data through clean REST endpoints with support for filtering via query parameters.
 
