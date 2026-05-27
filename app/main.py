@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
 from app import cache
 from app.models import AnnouncementsResponse, Announcement
+import httpx
 
 # This lifespan function runs when the server starts and stops
 @asynccontextmanager
@@ -77,3 +78,32 @@ def get_single_announcement(announcement_id: str):
             return ann
             
     raise HTTPException(status_code=404, detail="Announcement not found")
+
+@app.get("/download/{encrypt_id}")
+async def download_attachment(encrypt_id: str):
+    """
+    Proxy endpoint to securely download PDFs from KTU.
+    Allows frontend devs to use standard <a href="..."> links.
+    """
+    ktu_url = "https://api.ktu.edu.in/ktu-web-portal-api/anon/getAttachment"
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            # KTU's backend expects a POST request with the encryptId
+            response = await client.post(ktu_url, json={"encryptId": encrypt_id})
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=400, detail="Failed to fetch document from KTU")
+                
+            # Return the raw PDF bytes back to the user's browser
+            return Response(
+                content=response.content, 
+                media_type="application/pdf",
+                headers={
+                    # 'inline' opens it in the browser tab. 
+                    # Change to 'attachment' if you want it to force-download to their computer.
+                    "Content-Disposition": f'inline; filename="ktu_notification_{encrypt_id[:5]}.pdf"'
+                }
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
