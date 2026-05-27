@@ -4,7 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
 from app import cache
 from app.models import AnnouncementsResponse, Announcement
+from app.scraper import download_attachment as scraper_download
+import asyncio
 import httpx
+import re
 
 # This lifespan function runs when the server starts and stops
 @asynccontextmanager
@@ -35,8 +38,10 @@ def health_check():
     """Check if the API is running and when it last scraped data."""
     return {
         "status": "online",
-        "cached_items": len(cache.cached_announcements),
-        "last_updated": cache.last_updated
+        "cached_items": len(cache.state["announcements"]),
+        "last_updated": cache.state["last_updated"],
+        "has_token": cache.state["x_token"] is not None,
+        "token_preview": cache.state["x_token"][:15] if cache.state["x_token"] else "No token found!"
     }
 
 @app.get("/announcements", response_model=AnnouncementsResponse)
@@ -46,7 +51,7 @@ def get_announcements(
     scheme: str | None = Query(None, description="Filter by scheme year")
 ):
     """Get all announcements, optionally filtered by limit or new status."""
-    results = cache.cached_announcements
+    results = cache.state["announcements"]
 
     if scheme:
         results = [
@@ -61,7 +66,7 @@ def get_announcements(
         results = results[:limit]
 
     # Fallback to current time if cache hasn't finished its first run yet
-    updated_time = cache.last_updated or datetime.now(timezone.utc)
+    updated_time = cache.state["last_updated"] or datetime.now(timezone.utc)
 
     return AnnouncementsResponse(
         success=True,
@@ -73,37 +78,47 @@ def get_announcements(
 @app.get("/announcements/{announcement_id}", response_model=Announcement)
 def get_single_announcement(announcement_id: str):
     """Fetch a single announcement by its exact ID."""
-    for ann in cache.cached_announcements:
+    for ann in cache.state["announcements"]:
         if ann.id == announcement_id:
             return ann
             
     raise HTTPException(status_code=404, detail="Announcement not found")
 
 @app.get("/download/{encrypt_id}")
-async def download_attachment(encrypt_id: str):
-    """
-    Proxy endpoint to securely download PDFs from KTU.
-    Allows frontend devs to use standard <a href="..."> links.
-    """
-    ktu_url = "https://api.ktu.edu.in/ktu-web-portal-api/anon/getAttachment"
+async def download_pdf(encrypt_id: str):
+    """Download an attachment by its encryptId with its original filename."""
+    if not cache.state["x_token"]:
+        raise HTTPException(
+            status_code=503, 
+            detail="API is warming up and hasn't generated an access token yet. Try again in a minute."
+        )
     
-    async with httpx.AsyncClient() as client:
-        try:
-            # KTU's backend expects a POST request with the encryptId
-            response = await client.post(ktu_url, json={"encryptId": encrypt_id})
-            
-            if response.status_code != 200:
-                raise HTTPException(status_code=400, detail="Failed to fetch document from KTU")
-                
-            # Return the raw PDF bytes back to the user's browser
-            return Response(
-                content=response.content, 
-                media_type="application/pdf",
-                headers={
-                    # 'inline' opens it in the browser tab. 
-                    # Change to 'attachment' if you want it to force-download to their computer.
-                    "Content-Disposition": f'inline; filename="ktu_notification_{encrypt_id[:5]}.pdf"'
-                }
-            )
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+    # 1. Search the cache for the real file name
+    real_file_name = f"KTU_Document_{encrypt_id[:6]}.pdf"  # Fallback name
+    
+    for ann in cache.state.get("announcements", []):
+        for att in ann.attachments:
+            if att.encrypt_id == encrypt_id:
+                # Clean the string to ensure it's a valid filename (remove weird characters)
+                clean_name = "".join(c for c in att.name if c.isalnum() or c in " ._-").strip()
+                # Ensure it ends with .pdf
+                if not clean_name.lower().endswith(".pdf"):
+                    clean_name += ".pdf"
+                real_file_name = clean_name
+                break
+    
+    try:
+        # Fetch the PDF bytes asynchronously
+        pdf_bytes = await scraper_download(encrypt_id, cache.state["x_token"])
+        
+        # 2. Return the bytes with the dynamically found real_file_name
+        return Response(
+            content=pdf_bytes, 
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{real_file_name}"'}
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch from KTU: {str(e)}")
