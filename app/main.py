@@ -5,9 +5,12 @@ from datetime import datetime, timezone
 from app import cache
 from app.models import AnnouncementsResponse, Announcement
 from app.scraper import download_attachment as scraper_download
+from fastapi.responses import HTMLResponse
 import asyncio
 import httpx
 import re
+
+
 
 # This lifespan function runs when the server starts and stops
 @asynccontextmanager
@@ -122,3 +125,16 @@ async def download_pdf(encrypt_id: str):
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch from KTU: {str(e)}")
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    return """
+    <html>
+      <head>
+        <meta name="google-site-verification" content="C_ItUx9PVzCwP9D2doe3bbM-Yfutkx0L-PeWnPhN4Pg" />
+      </head>
+      <body>
+        <p>KTU Announcements API - <a href="/docs">View Docs</a></p>
+      </body>
+    </html>
+    """
