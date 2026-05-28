@@ -45,21 +45,32 @@ def extract_schemes(publish_date: date, text: str) -> list[str]:
         return [] 
 
     # PHASE 3: The Mathematical Calculation (For B.Tech)
-    if 'b.tech' in text_lower:
+    is_btech = 'b.tech' in text_lower
+    is_inter_college_transfer = 'inter-college transfer' in text_lower or 'inter college transfer' in text_lower
+
+    if is_btech or is_inter_college_transfer:
         sem_match = re.search(r's([1-8])', text_lower)
         if sem_match:
             sem = int(sem_match.group(1))
-            pub_year = publish_date.year
-            pub_month = publish_date.month
-            
-            # Determine Academic Start Year based on Odd/Even and Month
-            if sem % 2 != 0: # Odd (1, 3, 5, 7)
-                start_year = pub_year - 1 if pub_month <= 6 else pub_year
-            else: # Even (2, 4, 6, 8)
-                start_year = pub_year - 1 if pub_month <= 9 else pub_year
+
+            # Try to extract AY start year from text (e.g. "AY 2026-2027", "AY 2026-27")
+            ay_match = re.search(r'\bay\b\s*(\d{4})-(\d{2,4})', text_lower)
+            if ay_match:
+                ay_start_year = int(ay_match.group(1))
+                year_of_study = math.ceil(sem / 2)
+                admission_year = ay_start_year - year_of_study + 1
+            else:
+                pub_year = publish_date.year
+                pub_month = publish_date.month
                 
-            year_of_study = math.ceil(sem / 2)
-            admission_year = start_year - year_of_study + 1
+                # Determine Academic Start Year based on Odd/Even and Month
+                if sem % 2 != 0:  # Odd (1, 3, 5, 7)
+                    start_year = pub_year - 1 if pub_month <= 6 else pub_year
+                else:  # Even (2, 4, 6, 8)
+                    start_year = pub_year - 1 if pub_month <= 9 else pub_year
+                    
+                year_of_study = math.ceil(sem / 2)
+                admission_year = start_year - year_of_study + 1
             
             return [get_scheme_for_admission(admission_year)]
             
