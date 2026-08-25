@@ -43,6 +43,8 @@ def health_check():
         "status": "online",
         "cached_items": len(cache.state["announcements"]),
         "last_updated": cache.state["last_updated"],
+        "last_attempt": cache.state["last_attempt"],
+        "last_error": cache.state["last_error"],
         "has_token": cache.state["x_token"] is not None,
         "token_preview": cache.state["x_token"][:15] if cache.state["x_token"] else "No token found!"
     }
