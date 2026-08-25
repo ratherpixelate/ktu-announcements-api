@@ -6,6 +6,7 @@ from app.utils import extract_schemes
 import httpx  
 import re
 import base64
+import json
 
 KTU_URL = "https://ktu.edu.in/Menu/announcements"
 
@@ -103,22 +104,21 @@ async def download_attachment(encrypt_id: str, x_token: str) -> bytes:
     payload = {"encryptId": encrypt_id}
     
     async with httpx.AsyncClient(http1=True, http2=False) as client:
-        # We don't need stream() anymore since it's just a text string response
         resp = await client.post(url, headers=headers, json=payload, timeout=60.0)
         
         if resp.status_code != 200:
             raise Exception(f"KTU API returned {resp.status_code}: {resp.text}")
         
-        # 1. Get the raw text response and strip any accidental JSON quotes
         base64_string = resp.text.strip('"')
-        
-        # 2. Decode the Base64 string back into raw binary PDF bytes
+
+        if "&&" in base64_string:
+            base64_string = base64_string[:base64_string.index("&&")]
+
         try:
             pdf_bytes = base64.b64decode(base64_string)
         except Exception as e:
             raise Exception(f"Failed to decode KTU's Base64 response: {str(e)}")
             
-        # 3. Final safety check (this will pass now!)
         if not pdf_bytes.startswith(b"%PDF"):
             raise Exception("Decoded bytes do not form a valid PDF.")
 
