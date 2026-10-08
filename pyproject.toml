@@ -1,0 +1,13 @@
+[project]
+name = "ktu-announcements-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "apscheduler>=3.11.3",
+    "beautifulsoup4>=4.15.0",
+    "fastapi>=0.142.4",
+    "httpx>=0.28.1",
+    "playwright>=1.63.0",
+    "python-dotenv>=1.2.4",
+    "uvicorn>=0.54.0",
+]
