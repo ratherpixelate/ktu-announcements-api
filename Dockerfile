@@ -8,9 +8,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright and its system dependencies
-RUN playwright install chromium
-RUN playwright install-deps
+# Install Playwright OS dependencies and fetch Camoufox browser
+RUN playwright install-deps firefox
+RUN python -m camoufox fetch
 
 # Copy the rest of your code into the container
 COPY . .

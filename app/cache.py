@@ -14,7 +14,7 @@ state = {
 
 def update_cache():
     """Run the scraper and update the in-memory cache."""
-    print(f"[{datetime.now(timezone.utc)}] Updating announcements cache via Playwright...")
+    print(f"[{datetime.now(timezone.utc)}] Updating announcements cache via Camoufox...")
     state["last_attempt"] = datetime.now(timezone.utc)
     
     try:

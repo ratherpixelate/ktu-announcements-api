@@ -1,4 +1,4 @@
-from playwright.sync_api import sync_playwright
+from camoufox.sync_api import Camoufox
 from datetime import datetime, date, timezone
 from app.models import Attachment, Announcement
 from bs4 import BeautifulSoup
@@ -17,27 +17,34 @@ def parse_date(date_str: str) -> date:
     except ValueError:
         return datetime.today().date()
 
-def scrape_announcements() -> list[Announcement]:
-    """Fetch announcements by intercepting the API call in a real browser."""
+def scrape_announcements() -> tuple[list[Announcement], str | None]:
+    """Fetch announcements by intercepting the API call using Camoufox anti-detect browser."""
     announcements = []
     scraped_at = datetime.now(timezone.utc)
+    x_token = None
 
-    with sync_playwright() as p:
-        # Launch an invisible Chromium browser
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--no-sandbox", "--disable-setuid-sandbox"]
-        )
+    with Camoufox(
+        headless=True,
+        disable_coop=True,
+        humanize=True,
+        i_know_what_im_doing=True
+    ) as browser:
         page = browser.new_page()
 
         print("Opening KTU website and waiting for API response...")
         
         # Listen for the specific API response we want
-        with page.expect_response(lambda response: "/anon/announcemnts" in response.url) as response_info:
+        with page.expect_response(
+            lambda response: "/anon/announcemnts" in response.url,
+            timeout=60000
+        ) as response_info:
             page.goto(KTU_URL, timeout=60000, wait_until="domcontentloaded")
         
         # Extract the JSON payload directly from the intercepted network traffic!
         api_response = response_info.value
+        if api_response.status != 200:
+            raise RuntimeError(f"KTU API returned unexpected status {api_response.status}")
+
         data = api_response.json()
 
         x_token = api_response.request.headers.get("x-token")
@@ -67,7 +74,7 @@ def scrape_announcements() -> list[Announcement]:
                 title = item.get("subject", "")
                 full_text = f"{title} {clean_text or ''}"
                 
-                #Smart Parser Logic
+                # Smart Parser Logic
                 ann_date = parse_date(item.get("announcementDate", ""))
                 unique_schemes = extract_schemes(ann_date, full_text)
 
@@ -84,9 +91,7 @@ def scrape_announcements() -> list[Announcement]:
                 )
                 announcements.append(announcement)
 
-        browser.close()
-
-    return announcements,x_token
+    return announcements, x_token
 
 async def download_attachment(encrypt_id: str, x_token: str) -> bytes:
     if not x_token:
