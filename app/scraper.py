@@ -31,7 +31,7 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
     ) as browser:
         page = browser.new_page()
 
-        print("Opening KTU website and waiting for API response...")
+        print("Opening KTU website and waiting for API response...", flush=True)
         
         # Listen for the specific API response we want
         with page.expect_response(
@@ -48,9 +48,9 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
         data = api_response.json()
 
         x_token = api_response.request.headers.get("x-token")
-        print(f"\n=== DEBUG SCRAPER ===")
-        print(f"Extracted x-token type: {type(x_token)}")
-        print(f"Extracted x-token value: {repr(x_token)[:50]}...\n")
+        print(f"\n=== DEBUG SCRAPER ===", flush=True)
+        print(f"Extracted x-token type: {type(x_token)}", flush=True)
+        print(f"Extracted x-token value: {repr(x_token)[:50]}...\n", flush=True)
 
         if data and "content" in data:
             for item in data["content"]:

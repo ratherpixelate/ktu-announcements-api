@@ -15,10 +15,10 @@ import re
 # This lifespan function runs when the server starts and stops
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting background scraper...")
+    print("Starting background scraper...", flush=True)
     cache.start_scheduler()
     yield
-    print("Shutting down...")
+    print("Shutting down...", flush=True)
 
 app = FastAPI(
     title="KTU Announcements API",
