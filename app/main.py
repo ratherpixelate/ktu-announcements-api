@@ -49,6 +49,20 @@ def health_check():
         "token_preview": cache.state["x_token"][:15] if cache.state["x_token"] else "No token found!"
     }
 
+@app.get("/refresh")
+def refresh_cache():
+    """Manually trigger a cache update and return the current cache state."""
+    cache.update_cache()
+    return {
+        "status": "online",
+        "cached_items": len(cache.state["announcements"]),
+        "last_updated": cache.state["last_updated"],
+        "last_attempt": cache.state["last_attempt"],
+        "last_error": cache.state["last_error"],
+        "has_token": cache.state["x_token"] is not None,
+        "token_preview": cache.state["x_token"][:15] if cache.state["x_token"] else "No token found!"
+    }
+
 @app.get("/announcements", response_model=AnnouncementsResponse)
 def get_announcements(
     limit: int | None = Query(None, description="Max number of announcements to return"),
