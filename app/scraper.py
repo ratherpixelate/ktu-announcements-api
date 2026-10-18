@@ -23,34 +23,36 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
     scraped_at = datetime.now(timezone.utc)
     x_token = None
 
+    print(f"[{datetime.now(timezone.utc)}] Launching Camoufox browser (headless='virtual')...", flush=True)
     with Camoufox(
-        headless=True,
+        headless="virtual",
         disable_coop=True,
         humanize=True,
         i_know_what_im_doing=True
     ) as browser:
+        print(f"[{datetime.now(timezone.utc)}] Camoufox launched. Creating browser page...", flush=True)
         page = browser.new_page()
 
-        print("Opening KTU website and waiting for API response...", flush=True)
+        print(f"[{datetime.now(timezone.utc)}] Navigating to KTU announcements and waiting for Turnstile + API response...", flush=True)
         
         # Listen for the specific API response we want
         with page.expect_response(
             lambda response: "/anon/announcemnts" in response.url,
-            timeout=60000
+            timeout=75000
         ) as response_info:
             page.goto(KTU_URL, timeout=60000, wait_until="domcontentloaded")
+            print(f"[{datetime.now(timezone.utc)}] Navigation initiated. Waiting for network response...", flush=True)
         
         # Extract the JSON payload directly from the intercepted network traffic!
         api_response = response_info.value
+        print(f"[{datetime.now(timezone.utc)}] Intercepted API response: HTTP {api_response.status}", flush=True)
         if api_response.status != 200:
             raise RuntimeError(f"KTU API returned unexpected status {api_response.status}")
 
         data = api_response.json()
 
         x_token = api_response.request.headers.get("x-token")
-        print(f"\n=== DEBUG SCRAPER ===", flush=True)
-        print(f"Extracted x-token type: {type(x_token)}", flush=True)
-        print(f"Extracted x-token value: {repr(x_token)[:50]}...\n", flush=True)
+        print(f"[{datetime.now(timezone.utc)}] Extracted x-token: {repr(x_token)[:30]}...", flush=True)
 
         if data and "content" in data:
             for item in data["content"]:

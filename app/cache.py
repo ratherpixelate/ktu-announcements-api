@@ -19,11 +19,11 @@ def update_cache():
     print(f"[{datetime.now(timezone.utc)}] Updating announcements cache via Camoufox...", flush=True)
     state["last_attempt"] = datetime.now(timezone.utc)
     
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
         # Protect against hung scraping threads by enforcing a 120s hard watchdog timeout
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(scrape_announcements)
-            results, token = future.result(timeout=120)
+        future = executor.submit(scrape_announcements)
+        results, token = future.result(timeout=120)
         
         # We no longer need the 'global' keyword because we are modifying a dict
         if results:
@@ -45,6 +45,9 @@ def update_cache():
         state["last_error"] = str(e)  
         print(f"[{datetime.now(timezone.utc)}] Error updating cache: {e}", flush=True)
         traceback.print_exc()
+    finally:
+        # Crucial: shutdown with wait=False so we don't hang if the worker thread is blocked
+        executor.shutdown(wait=False, cancel_futures=True)
 
 def start_scheduler():
     scheduler = BackgroundScheduler()
