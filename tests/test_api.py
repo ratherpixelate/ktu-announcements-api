@@ -90,3 +90,31 @@ def test_get_single_announcement():
 
     res_404 = client.get("/announcements/000")
     assert res_404.status_code == 404
+
+def test_sync_endpoint_unauthorized():
+    res = client.post("/api/sync", json={"announcements": []}, headers={"X-Sync-Secret": "wrong"})
+    assert res.status_code == 403
+
+def test_sync_endpoint_success(monkeypatch):
+    monkeypatch.setenv("SYNC_SECRET", "super_secret_123")
+    payload = {
+        "announcements": [
+            {
+                "id": "777",
+                "title": "Synced Notice",
+                "date": "2026-05-12",
+                "is_new": True,
+                "attachments": [],
+                "schemes": ["2019"],
+                "scraped_at": "2026-05-12T10:00:00Z"
+            }
+        ],
+        "x_token": "token_abc"
+    }
+    res = client.post("/api/sync", json=payload, headers={"X-Sync-Secret": "super_secret_123"})
+    assert res.status_code == 200
+    assert res.json()["status"] == "success"
+    assert res.json()["synced_items"] == 1
+    assert cache.state["x_token"] == "token_abc"
+    assert len(cache.state["announcements"]) == 1
+    assert cache.state["announcements"][0].id == "777"
