@@ -1,0 +1,36 @@
+name: Scheduled KTU Announcements Scraper
+
+on:
+  schedule:
+    # Run every 30 minutes
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions dashboard
+
+jobs:
+  scrape-and-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install-deps firefox
+          python -m camoufox fetch
+
+      - name: Run Scraper and Sync to Render
+        env:
+          RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
+          SYNC_SECRET: ${{ secrets.SYNC_SECRET }}
+          PYTHONUNBUFFERED: "1"
+        run: python scripts/sync_to_render.py
