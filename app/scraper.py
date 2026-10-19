@@ -7,6 +7,8 @@ import httpx
 import re
 import base64
 import json
+import shutil
+import os
 
 KTU_URL = "https://ktu.edu.in/Menu/announcements"
 
@@ -23,9 +25,13 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
     scraped_at = datetime.now(timezone.utc)
     x_token = None
 
-    print(f"[{datetime.now(timezone.utc)}] Launching Camoufox browser (headless='virtual')...", flush=True)
+    # Auto-detect headless mode: use 'virtual' display if Xvfb is installed on a headless system, otherwise True
+    use_virtual = bool(shutil.which("Xvfb") and not os.environ.get("DISPLAY"))
+    headless_mode = "virtual" if use_virtual else True
+
+    print(f"[{datetime.now(timezone.utc)}] Launching Camoufox browser (headless={headless_mode!r})...", flush=True)
     with Camoufox(
-        headless="virtual",
+        headless=headless_mode,
         disable_coop=True,
         humanize=True,
         i_know_what_im_doing=True
