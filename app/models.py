@@ -27,3 +27,8 @@ class AnnouncementsResponse(BaseModel):
     count: int
     last_updated: datetime
     data: list[Announcement]
+
+
+class SyncPayload(BaseModel):
+    announcements: list[Announcement]
+    x_token: Optional[str] = None

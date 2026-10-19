@@ -1,22 +1,26 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, HTTPException, Query, Response, Header
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
 from app import cache
-from app.models import AnnouncementsResponse, Announcement
+from app.models import AnnouncementsResponse, Announcement, SyncPayload
 from app.scraper import download_attachment as scraper_download
 from fastapi.responses import HTMLResponse
 import asyncio
 import httpx
 import re
+import os
 
 
 
 # This lifespan function runs when the server starts and stops
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting background scraper...", flush=True)
-    cache.start_scheduler()
+    if os.environ.get("ENABLE_IN_CONTAINER_SCRAPER", "").lower() in ("true", "1"):
+        print("Starting in-container background scraper...", flush=True)
+        cache.start_scheduler()
+    else:
+        print("Running in decoupled API mode (scraper managed externally via GitHub Actions)", flush=True)
     yield
     print("Shutting down...", flush=True)
 
@@ -51,7 +55,16 @@ def health_check():
 
 @app.get("/refresh")
 def refresh_cache():
-    """Manually trigger a cache update and return the current cache state."""
+    """Manually trigger a cache update or return current cache state if running in decoupled mode."""
+    if os.environ.get("ENABLE_IN_CONTAINER_SCRAPER", "").lower() not in ("true", "1"):
+        return {
+            "status": "online",
+            "mode": "decoupled",
+            "message": "In-container scraper is disabled to preserve Render 512MB RAM limit. Scraping runs via GitHub Actions.",
+            "cached_items": len(cache.state["announcements"]),
+            "last_updated": cache.state["last_updated"],
+            "has_token": cache.state["x_token"] is not None
+        }
     cache.update_cache()
     return {
         "status": "online",
@@ -61,6 +74,29 @@ def refresh_cache():
         "last_error": cache.state["last_error"],
         "has_token": cache.state["x_token"] is not None,
         "token_preview": cache.state["x_token"][:15] if cache.state["x_token"] else "No token found!"
+    }
+
+@app.post("/api/sync")
+def sync_data(payload: SyncPayload, x_sync_secret: str = Header(..., alias="X-Sync-Secret")):
+    """Receive announcements and x-token from an external scraper (e.g. GitHub Actions)."""
+    expected_secret = os.environ.get("SYNC_SECRET")
+    if not expected_secret or x_sync_secret != expected_secret:
+        raise HTTPException(status_code=403, detail="Invalid or missing sync secret")
+    
+    if payload.announcements:
+        cache.state["announcements"] = payload.announcements
+        cache.state["last_updated"] = datetime.now(timezone.utc)
+    if payload.x_token:
+        cache.state["x_token"] = payload.x_token
+    cache.state["last_attempt"] = datetime.now(timezone.utc)
+    cache.state["last_error"] = None
+
+    print(f"[{datetime.now(timezone.utc)}] Successfully synced {len(payload.announcements)} announcements via /api/sync", flush=True)
+    return {
+        "status": "success",
+        "synced_items": len(payload.announcements),
+        "has_token": payload.x_token is not None,
+        "last_updated": cache.state["last_updated"]
     }
 
 @app.get("/announcements", response_model=AnnouncementsResponse)
