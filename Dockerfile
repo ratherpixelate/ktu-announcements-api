@@ -6,21 +6,10 @@ WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV XDG_CACHE_HOME=/cache
 
 # Copy requirements and install Python packages
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Playwright OS dependencies for Firefox and fetch Camoufox browser into shared /cache
-RUN mkdir -p /cache && \
-    apt-get update && \
-    playwright install-deps firefox && \
-    python -m camoufox fetch && \
-    chmod -R 777 /cache && \
-    rm -rf /var/lib/apt/lists/*
-
-ENV HOME=/tmp
 
 # Copy the rest of your code into the container
 COPY . .
