@@ -33,4 +33,5 @@ jobs:
           RENDER_API_URL: ${{ secrets.RENDER_API_URL }}
           SYNC_SECRET: ${{ secrets.SYNC_SECRET }}
           PYTHONUNBUFFERED: "1"
+          PYTHONPATH: "."
         run: python scripts/sync_to_render.py
