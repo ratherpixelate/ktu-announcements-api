@@ -9,6 +9,7 @@ import base64
 import json
 import shutil
 import os
+from pathlib import Path
 
 KTU_URL = "https://ktu.edu.in/Menu/announcements"
 
@@ -19,19 +20,42 @@ def parse_date(date_str: str) -> date:
     except ValueError:
         return datetime.today().date()
 
+def handle_turnstile_challenge(page):
+    """Attempt to solve or click any interactive Turnstile challenge if displayed."""
+    try:
+        for frame in page.frames:
+            if "challenges.cloudflare.com" in frame.url or "turnstile" in frame.url:
+                for selector in ['input[type="checkbox"]', '#challenge-stage', '.ctp-checkbox-label', '#cf-stage', '[type="checkbox"]']:
+                    loc = frame.locator(selector)
+                    if loc.count() > 0:
+                        first_loc = loc.first
+                        if first_loc.is_visible():
+                            print(f"[{datetime.now(timezone.utc)}] Interactive Turnstile challenge detected ({selector}). Clicking...", flush=True)
+                            first_loc.click()
+                            page.wait_for_timeout(2000)
+                            return
+    except Exception:
+        pass
+
 def scrape_announcements() -> tuple[list[Announcement], str | None]:
     """Fetch announcements by intercepting the API call using Camoufox anti-detect browser."""
     announcements = []
     scraped_at = datetime.now(timezone.utc)
     x_token = None
 
-    # Auto-detect headless mode: use 'virtual' display if Xvfb is installed on a headless system, otherwise True
-    use_virtual = bool(shutil.which("Xvfb") and not os.environ.get("DISPLAY"))
-    headless_mode = "virtual" if use_virtual else True
+    # Headless mode: default to native Camoufox anti-detect headless engine (headless=True)
+    headless_env = os.environ.get("CAMOUFOX_HEADLESS", "").lower()
+    if headless_env in ("virtual",):
+        headless_mode = "virtual"
+    elif headless_env in ("false", "0"):
+        headless_mode = False
+    else:
+        headless_mode = True
 
-    print(f"[{datetime.now(timezone.utc)}] Launching Camoufox browser (headless={headless_mode!r})...", flush=True)
+    print(f"[{datetime.now(timezone.utc)}] Launching Camoufox browser (headless={headless_mode!r}, geoip=True)...", flush=True)
     with Camoufox(
         headless=headless_mode,
+        geoip=True,
         disable_coop=True,
         humanize=True,
         i_know_what_im_doing=True
@@ -39,22 +63,59 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
         print(f"[{datetime.now(timezone.utc)}] Camoufox launched. Creating browser page...", flush=True)
         page = browser.new_page()
 
-        print(f"[{datetime.now(timezone.utc)}] Navigating to KTU announcements and waiting for Turnstile + API response...", flush=True)
-        
-        # Listen for the specific API response we want
-        with page.expect_response(
-            lambda response: "/anon/announcemnts" in response.url,
-            timeout=75000
-        ) as response_info:
-            page.goto(KTU_URL, timeout=60000, wait_until="domcontentloaded")
-            print(f"[{datetime.now(timezone.utc)}] Navigation initiated. Waiting for network response...", flush=True)
-        
-        # Extract the JSON payload directly from the intercepted network traffic!
-        api_response = response_info.value
-        print(f"[{datetime.now(timezone.utc)}] Intercepted API response: HTTP {api_response.status}", flush=True)
-        if api_response.status != 200:
-            raise RuntimeError(f"KTU API returned unexpected status {api_response.status}")
+        captured_responses = []
 
+        def on_response(response):
+            if "/anon/announcemnts" in response.url:
+                captured_responses.append(response)
+
+        page.on("response", on_response)
+
+        print(f"[{datetime.now(timezone.utc)}] Navigating to KTU announcements and waiting for Turnstile + API response...", flush=True)
+        page.goto(KTU_URL, timeout=60000, wait_until="domcontentloaded")
+        print(f"[{datetime.now(timezone.utc)}] Page loaded. Waiting for network response and Turnstile verification...", flush=True)
+
+        api_response = None
+        start_time = datetime.now(timezone.utc)
+        timeout_seconds = 60
+
+        while (datetime.now(timezone.utc) - start_time).total_seconds() < timeout_seconds:
+            handle_turnstile_challenge(page)
+
+            for res in captured_responses:
+                if res.status == 200:
+                    api_response = res
+                    break
+
+            if api_response:
+                break
+
+            page.wait_for_timeout(1000)
+
+        if not api_response:
+            try:
+                page.screenshot(path="scraper_failure.png", full_page=True)
+                Path("scraper_failure.html").write_text(page.content(), encoding="utf-8")
+                print(f"[{datetime.now(timezone.utc)}] Saved diagnostic screenshot to scraper_failure.png and HTML to scraper_failure.html", flush=True)
+            except Exception as e:
+                print(f"[{datetime.now(timezone.utc)}] Failed to save diagnostic artifacts: {e}", flush=True)
+
+            if captured_responses:
+                last_res = captured_responses[-1]
+                req_token = last_res.request.headers.get("x-token")
+                try:
+                    res_body = last_res.text()
+                except Exception:
+                    res_body = "(could not read body)"
+                print(f"[{datetime.now(timezone.utc)}] Last API response status: {last_res.status}", flush=True)
+                print(f"[{datetime.now(timezone.utc)}] Request x-token: {repr(req_token)}", flush=True)
+                print(f"[{datetime.now(timezone.utc)}] Response body: {res_body[:300]}", flush=True)
+                raise RuntimeError(f"KTU API returned status {last_res.status}: {res_body[:100]}")
+            else:
+                raise RuntimeError("KTU announcements API was not called within the timeout window.")
+
+        # Extract the JSON payload directly from the intercepted network traffic!
+        print(f"[{datetime.now(timezone.utc)}] Intercepted API response: HTTP {api_response.status}", flush=True)
         data = api_response.json()
 
         x_token = api_response.request.headers.get("x-token")

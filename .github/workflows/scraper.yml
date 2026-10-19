@@ -34,4 +34,15 @@ jobs:
           SYNC_SECRET: ${{ secrets.SYNC_SECRET }}
           PYTHONUNBUFFERED: "1"
           PYTHONPATH: "."
+          CAMOUFOX_HEADLESS: "true"
         run: python scripts/sync_to_render.py
+
+      - name: Upload Diagnostic Artifacts on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-diagnostic-artifacts
+          path: |
+            scraper_failure.png
+            scraper_failure.html
+          if-no-files-found: ignore
