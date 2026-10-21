@@ -13,6 +13,7 @@ state = {
     "last_error": None,
     "last_attempt": None,
     "attachments": {},
+    "last_dispatch": None,
 }
 
 def update_cache():

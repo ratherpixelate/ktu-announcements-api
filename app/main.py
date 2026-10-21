@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Query, Response, Header
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
+from typing import Optional
 from app import cache
 from app.models import AnnouncementsResponse, Announcement, SyncPayload
 from app.scraper import download_attachment as scraper_download
@@ -55,8 +56,12 @@ def health_check():
     }
 
 @app.get("/refresh")
-async def refresh_cache():
-    """Manually trigger a cache update or dispatch GitHub Actions scraper if running in decoupled mode."""
+async def refresh_cache(
+    secret: Optional[str] = Query(None, description="Secret key to authorize on-demand scraper dispatch"),
+    x_refresh_secret: Optional[str] = Header(None, alias="X-Refresh-Secret"),
+    authorization: Optional[str] = Header(None, alias="Authorization")
+):
+    """Trigger a cache update or dispatch GitHub Actions scraper if running in decoupled mode with authorization."""
     if os.environ.get("ENABLE_IN_CONTAINER_SCRAPER", "").lower() in ("true", "1"):
         cache.update_cache()
         return {
@@ -68,56 +73,98 @@ async def refresh_cache():
             "token_preview": cache.state["x_token"][:15] if cache.state["x_token"] else "No token found!"
         }
 
-    github_pat = os.environ.get("GITHUB_PAT") or os.environ.get("GH_TOKEN")
     github_repo = os.environ.get("GITHUB_REPO", "ratherpixelate/ktu-announcements-api")
+    expected_secret = os.environ.get("REFRESH_SECRET") or os.environ.get("SYNC_SECRET")
 
-    if github_pat:
-        dispatch_url = f"https://api.github.com/repos/{github_repo}/actions/workflows/scraper.yml/dispatches"
-        headers = {
-            "Authorization": f"Bearer {github_pat}",
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "KTU-Announcements-API"
+    # Extract provided secret from query param, X-Refresh-Secret header, or Bearer auth
+    provided_secret = secret or x_refresh_secret
+    if not provided_secret and authorization:
+        if authorization.lower().startswith("bearer "):
+            provided_secret = authorization[7:].strip()
+        else:
+            provided_secret = authorization.strip()
+
+    # 1. Authorization Gate: require matching secret to dispatch GitHub Actions
+    if not expected_secret or provided_secret != expected_secret:
+        return {
+            "status": "online",
+            "mode": "decoupled",
+            "message": "Scraping runs automatically every 30m via GitHub Actions.",
+            "auth_required": True,
+            "tip": "To trigger an immediate scrape, supply your secret via '?secret=...' query parameter or 'X-Refresh-Secret' header.",
+            "actions_url": f"https://github.com/{github_repo}/actions",
+            "cached_items": len(cache.state["announcements"]),
+            "last_updated": cache.state["last_updated"],
+            "has_token": cache.state["x_token"] is not None
         }
-        payload = {"ref": "main"}
-        try:
-            async with httpx.AsyncClient() as client:
-                res = await client.post(dispatch_url, json=payload, headers=headers, timeout=10.0)
-                if res.status_code == 204:
-                    return {
-                        "status": "dispatched",
-                        "mode": "decoupled",
-                        "message": "Scraper workflow dispatched on GitHub Actions. Cache will update in ~1-2 minutes.",
-                        "actions_url": f"https://github.com/{github_repo}/actions",
-                        "cached_items": len(cache.state["announcements"]),
-                        "last_updated": cache.state["last_updated"]
-                    }
-                else:
-                    return {
-                        "status": "error",
-                        "mode": "decoupled",
-                        "message": f"GitHub dispatch failed with HTTP {res.status_code}: {res.text}",
-                        "cached_items": len(cache.state["announcements"]),
-                        "last_updated": cache.state["last_updated"]
-                    }
-        except Exception as e:
+
+    # 2. Cooldown Gate: mandatory 10-minute (600s) cooldown between dispatches
+    now = datetime.now(timezone.utc)
+    last_dispatch = cache.state.get("last_dispatch")
+    cooldown_seconds = 600  # 10 minutes
+
+    if last_dispatch:
+        elapsed = (now - last_dispatch).total_seconds()
+        if elapsed < cooldown_seconds:
+            remaining = int(cooldown_seconds - elapsed)
             return {
-                "status": "error",
+                "status": "cooldown",
                 "mode": "decoupled",
-                "message": f"Failed to contact GitHub API: {str(e)}",
+                "message": f"A scrape was recently triggered. Cooldown active: please wait {remaining} seconds before triggering again.",
+                "cooldown_remaining_seconds": remaining,
+                "actions_url": f"https://github.com/{github_repo}/actions",
                 "cached_items": len(cache.state["announcements"]),
                 "last_updated": cache.state["last_updated"]
             }
 
-    return {
-        "status": "online",
-        "mode": "decoupled",
-        "message": "In-container scraper is disabled to preserve Render 512MB RAM limit. Scraping runs via GitHub Actions.",
-        "tip": "To trigger an immediate scrape from this endpoint, set GITHUB_PAT in Render environment variables.",
-        "actions_url": f"https://github.com/{github_repo}/actions",
-        "cached_items": len(cache.state["announcements"]),
-        "last_updated": cache.state["last_updated"],
-        "has_token": cache.state["x_token"] is not None
+    # 3. GitHub PAT Check
+    github_pat = os.environ.get("GITHUB_PAT") or os.environ.get("GH_TOKEN")
+    if not github_pat:
+        return {
+            "status": "error",
+            "mode": "decoupled",
+            "message": "GITHUB_PAT environment variable is not configured in Render. Cannot dispatch workflow.",
+            "actions_url": f"https://github.com/{github_repo}/actions"
+        }
+
+    # 4. Dispatch GitHub Actions workflow
+    dispatch_url = f"https://api.github.com/repos/{github_repo}/actions/workflows/scraper.yml/dispatches"
+    headers = {
+        "Authorization": f"Bearer {github_pat}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "KTU-Announcements-API"
     }
+    payload = {"ref": "main"}
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.post(dispatch_url, json=payload, headers=headers, timeout=10.0)
+            if res.status_code == 204:
+                cache.state["last_dispatch"] = now
+                return {
+                    "status": "dispatched",
+                    "mode": "decoupled",
+                    "message": "Scraper workflow dispatched on GitHub Actions. Cache will update in ~1-2 minutes.",
+                    "cooldown_seconds": cooldown_seconds,
+                    "actions_url": f"https://github.com/{github_repo}/actions",
+                    "cached_items": len(cache.state["announcements"]),
+                    "last_updated": cache.state["last_updated"]
+                }
+            else:
+                return {
+                    "status": "error",
+                    "mode": "decoupled",
+                    "message": f"GitHub dispatch failed with HTTP {res.status_code}: {res.text}",
+                    "cached_items": len(cache.state["announcements"]),
+                    "last_updated": cache.state["last_updated"]
+                }
+    except Exception as e:
+        return {
+            "status": "error",
+            "mode": "decoupled",
+            "message": f"Failed to contact GitHub API: {str(e)}",
+            "cached_items": len(cache.state["announcements"]),
+            "last_updated": cache.state["last_updated"]
+        }
 
 @app.post("/api/sync")
 def sync_data(payload: SyncPayload, x_sync_secret: str = Header(..., alias="X-Sync-Secret")):

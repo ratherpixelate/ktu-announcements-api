@@ -160,8 +160,19 @@ def test_sync_and_download_cached_attachment(monkeypatch):
     assert dl_res.headers["content-type"] == "application/pdf"
     assert 'filename="Exam Schedule.pdf"' in dl_res.headers["content-disposition"]
 
-def test_refresh_endpoint_decoupled():
+def test_refresh_endpoint_unauthorized(monkeypatch):
+    monkeypatch.setenv("SYNC_SECRET", "super_secret_123")
     res = client.get("/refresh")
     assert res.status_code == 200
     assert res.json()["mode"] == "decoupled"
-    assert "actions_url" in res.json()
+    assert res.json()["auth_required"] is True
+
+def test_refresh_endpoint_cooldown(monkeypatch):
+    monkeypatch.setenv("SYNC_SECRET", "super_secret_123")
+    # Simulate a dispatch that happened 1 minute ago (within 10-minute cooldown)
+    cache.state["last_dispatch"] = datetime.now(timezone.utc)
+    res = client.get("/refresh?secret=super_secret_123")
+    assert res.status_code == 200
+    assert res.json()["status"] == "cooldown"
+    assert "cooldown_remaining_seconds" in res.json()
+    cache.state["last_dispatch"] = None
