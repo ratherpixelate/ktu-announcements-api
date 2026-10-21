@@ -22,15 +22,17 @@ def test_health_check():
     data = response.json()
     assert data["status"] == "online"
     assert data["has_token"] is True
-    assert data["token_preview"] == "sample_test_tok"
+    assert "token_preview" not in data
 
 def test_get_announcements_empty():
     cache.state["announcements"] = []
+    cache.state["last_updated"] = None
     response = client.get("/announcements")
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
     assert data["count"] == 0
+    assert data["last_updated"] is None
     assert data["data"] == []
 
 def test_get_announcements_with_data_and_filters():
@@ -176,3 +178,25 @@ def test_refresh_endpoint_cooldown(monkeypatch):
     assert res.json()["status"] == "cooldown"
     assert "cooldown_remaining_seconds" in res.json()
     cache.state["last_dispatch"] = None
+
+def test_attachment_internal_fields_excluded():
+    ann = Announcement(
+        id="555",
+        title="Notice with attachment",
+        date=date(2026, 5, 20),
+        is_new=False,
+        attachments=[
+            Attachment(name="Circular", encrypt_id="enc_abc")
+        ],
+        schemes=[],
+        scraped_at=datetime.now(timezone.utc)
+    )
+    cache.state["announcements"] = [ann]
+
+    res = client.get("/announcements/555")
+    assert res.status_code == 200
+    att = res.json()["attachments"][0]
+    assert att["name"] == "Circular"
+    assert att["encrypt_id"] == "enc_abc"
+    assert "fetch_url" not in att
+    assert "method" not in att

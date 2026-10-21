@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date, datetime
 
@@ -6,8 +6,8 @@ from datetime import date, datetime
 class Attachment(BaseModel):
     name: str
     encrypt_id: str
-    fetch_url: str = "https://api.ktu.edu.in/ktu-web-portal-api/anon/getAttachment"
-    method: str = "POST"
+    fetch_url: str = Field(default="https://api.ktu.edu.in/ktu-web-portal-api/anon/getAttachment", exclude=True)
+    method: str = Field(default="POST", exclude=True)
 
 
 class Announcement(BaseModel):
@@ -25,7 +25,7 @@ class Announcement(BaseModel):
 class AnnouncementsResponse(BaseModel):
     success: bool
     count: int
-    last_updated: datetime
+    last_updated: Optional[datetime] = None
     data: list[Announcement]
 
 

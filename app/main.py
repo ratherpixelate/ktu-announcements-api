@@ -7,9 +7,7 @@ from app import cache
 from app.models import AnnouncementsResponse, Announcement, SyncPayload
 from app.scraper import download_attachment as scraper_download
 from fastapi.responses import HTMLResponse
-import asyncio
 import httpx
-import re
 import os
 import base64
 
@@ -37,7 +35,6 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -51,8 +48,7 @@ def health_check():
         "last_updated": cache.state["last_updated"],
         "last_attempt": cache.state["last_attempt"],
         "last_error": cache.state["last_error"],
-        "has_token": cache.state["x_token"] is not None,
-        "token_preview": cache.state["x_token"][:15] if cache.state["x_token"] else "No token found!"
+        "has_token": cache.state["x_token"] is not None
     }
 
 @app.get("/refresh")
@@ -69,8 +65,7 @@ async def refresh_cache(
             "mode": "in-container",
             "cached_items": len(cache.state["announcements"]),
             "last_updated": cache.state["last_updated"],
-            "has_token": cache.state["x_token"] is not None,
-            "token_preview": cache.state["x_token"][:15] if cache.state["x_token"] else "No token found!"
+            "has_token": cache.state["x_token"] is not None
         }
 
     github_repo = os.environ.get("GITHUB_REPO", "ratherpixelate/ktu-announcements-api")
@@ -224,13 +219,10 @@ def get_announcements(
     if limit is not None:
         results = results[:limit]
 
-    # Fallback to current time if cache hasn't finished its first run yet
-    updated_time = cache.state["last_updated"] or datetime.now(timezone.utc)
-
     return AnnouncementsResponse(
         success=True,
         count=len(results),
-        last_updated=updated_time,
+        last_updated=cache.state["last_updated"],
         data=results
     )
 
