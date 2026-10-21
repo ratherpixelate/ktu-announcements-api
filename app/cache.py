@@ -12,6 +12,7 @@ state = {
     "x_token": None,
     "last_error": None,
     "last_attempt": None,
+    "attachments": {},
 }
 
 def update_cache():

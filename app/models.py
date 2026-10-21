@@ -29,6 +29,13 @@ class AnnouncementsResponse(BaseModel):
     data: list[Announcement]
 
 
+class CachedAttachment(BaseModel):
+    encrypt_id: str
+    filename: str
+    content_b64: str
+
+
 class SyncPayload(BaseModel):
     announcements: list[Announcement]
     x_token: Optional[str] = None
+    cached_attachments: Optional[list[CachedAttachment]] = None

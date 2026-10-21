@@ -7,8 +7,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import json
 import httpx
+import base64
+import asyncio
 from datetime import datetime, timezone
-from app.scraper import scrape_announcements
+from app.scraper import scrape_announcements, download_attachment
 
 def main():
     print(f"[{datetime.now(timezone.utc)}] Starting scheduled scrape...", flush=True)
@@ -19,6 +21,25 @@ def main():
         sys.exit(1)
 
     print(f"[{datetime.now(timezone.utc)}] Successfully scraped {len(announcements)} announcements. Token present: {x_token is not None}", flush=True)
+
+    cached_attachments = []
+    if x_token:
+        print(f"[{datetime.now(timezone.utc)}] Pre-fetching attachments while token is fresh...", flush=True)
+        for ann in announcements:
+            for att in ann.attachments:
+                try:
+                    pdf_bytes = asyncio.run(download_attachment(att.encrypt_id, x_token))
+                    clean_name = "".join(c for c in att.name if c.isalnum() or c in " ._-").strip()
+                    if not clean_name.lower().endswith(".pdf"):
+                        clean_name += ".pdf"
+                    cached_attachments.append({
+                        "encrypt_id": att.encrypt_id,
+                        "filename": clean_name,
+                        "content_b64": base64.b64encode(pdf_bytes).decode("ascii")
+                    })
+                    print(f"[{datetime.now(timezone.utc)}] Pre-fetched: {clean_name} ({len(pdf_bytes)} bytes)", flush=True)
+                except Exception as e:
+                    print(f"[{datetime.now(timezone.utc)}] Warning: could not pre-fetch attachment {att.encrypt_id}: {e}", flush=True)
 
     render_api_url = os.environ.get("RENDER_API_URL")
     sync_secret = os.environ.get("SYNC_SECRET")
@@ -32,7 +53,8 @@ def main():
 
     payload = {
         "announcements": [json.loads(a.model_dump_json()) for a in announcements],
-        "x_token": x_token
+        "x_token": x_token,
+        "cached_attachments": cached_attachments
     }
 
     headers = {
