@@ -71,26 +71,55 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
 
         page.on("response", on_response)
 
-        print(f"[{datetime.now(timezone.utc)}] Navigating to KTU announcements and waiting for Turnstile + API response...", flush=True)
-        page.goto(KTU_URL, timeout=60000, wait_until="domcontentloaded")
-        print(f"[{datetime.now(timezone.utc)}] Page loaded. Waiting for network response and Turnstile verification...", flush=True)
-
         api_response = None
-        start_time = datetime.now(timezone.utc)
-        timeout_seconds = 60
+        max_attempts = 3
+        last_error_details = None
 
-        while (datetime.now(timezone.utc) - start_time).total_seconds() < timeout_seconds:
-            handle_turnstile_challenge(page)
+        for attempt in range(1, max_attempts + 1):
+            captured_responses.clear()
+            print(f"[{datetime.now(timezone.utc)}] [Attempt {attempt}/{max_attempts}] Navigating to KTU announcements...", flush=True)
+            try:
+                page.goto(KTU_URL, timeout=45000, wait_until="domcontentloaded")
+            except Exception as e:
+                print(f"[{datetime.now(timezone.utc)}] Navigation error on attempt {attempt}: {e}", flush=True)
+                page.wait_for_timeout(2000)
+                continue
 
-            for res in captured_responses:
-                if res.status == 200:
-                    api_response = res
+            print(f"[{datetime.now(timezone.utc)}] Page loaded. Waiting for network response and Turnstile verification...", flush=True)
+
+            attempt_start = datetime.now(timezone.utc)
+            attempt_timeout = 25
+
+            while (datetime.now(timezone.utc) - attempt_start).total_seconds() < attempt_timeout:
+                handle_turnstile_challenge(page)
+
+                for res in captured_responses:
+                    if res.status == 200:
+                        api_response = res
+                        break
+
+                if api_response:
                     break
+
+                page.wait_for_timeout(1000)
 
             if api_response:
                 break
 
-            page.wait_for_timeout(1000)
+            if captured_responses:
+                last_res = captured_responses[-1]
+                req_token = last_res.request.headers.get("x-token", "")
+                try:
+                    res_body = last_res.text()
+                except Exception:
+                    res_body = "(could not read body)"
+                last_error_details = f"HTTP {last_res.status} (x-token: {repr(req_token)[:15]}, body: {res_body[:100]})"
+                print(f"[{datetime.now(timezone.utc)}] Attempt {attempt} got {last_error_details}. Retrying with page reload...", flush=True)
+            else:
+                last_error_details = "no API response received within timeout"
+                print(f"[{datetime.now(timezone.utc)}] Attempt {attempt} received no API responses. Retrying...", flush=True)
+
+            page.wait_for_timeout(2000)
 
         if not api_response:
             try:
@@ -100,19 +129,7 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
             except Exception as e:
                 print(f"[{datetime.now(timezone.utc)}] Failed to save diagnostic artifacts: {e}", flush=True)
 
-            if captured_responses:
-                last_res = captured_responses[-1]
-                req_token = last_res.request.headers.get("x-token")
-                try:
-                    res_body = last_res.text()
-                except Exception:
-                    res_body = "(could not read body)"
-                print(f"[{datetime.now(timezone.utc)}] Last API response status: {last_res.status}", flush=True)
-                print(f"[{datetime.now(timezone.utc)}] Request x-token: {repr(req_token)}", flush=True)
-                print(f"[{datetime.now(timezone.utc)}] Response body: {res_body[:300]}", flush=True)
-                raise RuntimeError(f"KTU API returned status {last_res.status}: {res_body[:100]}")
-            else:
-                raise RuntimeError("KTU announcements API was not called within the timeout window.")
+            raise RuntimeError(f"KTU API failed after {max_attempts} attempts. Last result: {last_error_details}")
 
         # Extract the JSON payload directly from the intercepted network traffic!
         print(f"[{datetime.now(timezone.utc)}] Intercepted API response: HTTP {api_response.status}", flush=True)
