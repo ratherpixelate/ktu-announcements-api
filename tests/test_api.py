@@ -81,6 +81,12 @@ def test_get_announcements_with_data_and_filters():
     assert res.status_code == 200
     assert len(res.json()["data"]) == 2
 
+    # Test scheme filter with unmatched scheme (only General matches)
+    res_none = client.get("/announcements?scheme=9999")
+    assert res_none.status_code == 200
+    assert len(res_none.json()["data"]) == 1
+    assert res_none.json()["data"][0]["id"] == "102"
+
 def test_get_single_announcement():
     ann = Announcement(
         id="999",
