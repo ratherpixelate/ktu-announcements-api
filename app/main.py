@@ -39,9 +39,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
+
 @app.get("/health")
-def health_check():
+def health_check(response: Response):
     """Check if the API is running and when it last scraped data."""
+    response.headers["Cache-Control"] = "public, max-age=60"
     return {
         "status": "online",
         "cached_items": len(cache.state["announcements"]),
@@ -200,11 +205,13 @@ def sync_data(payload: SyncPayload, x_sync_secret: str = Header(..., alias="X-Sy
 
 @app.get("/announcements", response_model=AnnouncementsResponse)
 def get_announcements(
+    response: Response,
     limit: int | None = Query(None, description="Max number of announcements to return"),
     new_only: bool = Query(False, description="Only return announcements marked as 'New'"),
     scheme: str | None = Query(None, description="Filter by scheme year")
 ):
     """Get all announcements, optionally filtered by limit or new status."""
+    response.headers["Cache-Control"] = "public, max-age=300"
     results = cache.state["announcements"]
 
     if scheme:
@@ -227,8 +234,9 @@ def get_announcements(
     )
 
 @app.get("/announcements/{announcement_id}", response_model=Announcement)
-def get_single_announcement(announcement_id: str):
+def get_single_announcement(announcement_id: str, response: Response):
     """Fetch a single announcement by its exact ID."""
+    response.headers["Cache-Control"] = "public, max-age=300"
     for ann in cache.state["announcements"]:
         if ann.id == announcement_id:
             return ann
@@ -244,7 +252,10 @@ async def download_pdf(encrypt_id: str):
         return Response(
             content=cached["bytes"], 
             media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{cached["filename"]}"'}
+            headers={
+                "Content-Disposition": f'attachment; filename="{cached["filename"]}"',
+                "Cache-Control": "public, max-age=86400"
+            }
         )
 
     # 2. Search the cache for the real file name
@@ -276,7 +287,10 @@ async def download_pdf(encrypt_id: str):
         return Response(
             content=pdf_bytes, 
             media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{real_file_name}"'}
+            headers={
+                "Content-Disposition": f'attachment; filename="{real_file_name}"',
+                "Cache-Control": "public, max-age=86400"
+            }
         )
         
     except ValueError as e:
@@ -293,8 +307,9 @@ async def root():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="C_ItUx9PVzCwP9D2doe3bbM-Yfutkx0L-PeWnPhN4Pg" />
-    <meta name="description" content="Unofficial REST API for APJ Abdul Kalam Technological University (KTU) announcements. Built with FastAPI and Playwright.">
+    <meta name="description" content="Unofficial REST API for APJ Abdul Kalam Technological University (KTU) announcements. Built with FastAPI and Camoufox.">
     <title>KTU Announcements API</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -396,6 +411,11 @@ async def root():
         white-space: nowrap;
         margin-top: 1px;
         }
+        .method.post {
+        color: #e5c07b;
+        background: #e5c07b14;
+        border-color: #e5c07b33;
+        }
         .ep-right { flex: 1; min-width: 0; }
         .ep-path {
         font-family: 'JetBrains Mono', monospace;
@@ -455,7 +475,7 @@ async def root():
 
     <div class="base-url">
         <span class="base-label">BASE URL</span>
-        <span class="base-value">https://ktu-announcements-api-wxk8.onrender.com</span>
+        <span class="base-value" id="baseUrl">https://ktu-announcements-api-wxk8.onrender.com</span>
     </div>
 
     <p class="section-label">Endpoints</p>
@@ -468,6 +488,7 @@ async def root():
         </div>
         <span class="ep-arrow"><i class="ti ti-arrow-right"></i></span>
         </a>
+
         <a class="endpoint" href="/announcements?limit=5">
         <span class="method">GET</span>
         <div class="ep-right">
@@ -476,22 +497,70 @@ async def root():
         </div>
         <span class="ep-arrow"><i class="ti ti-arrow-right"></i></span>
         </a>
-        <a class="endpoint" href="/download/example">
+
+        <a class="endpoint" href="/announcements?new_only=true">
         <span class="method">GET</span>
         <div class="ep-right">
-            <div class="ep-path">/download/<span>{encrypt_id}</span></div>
-            <div class="ep-desc">Downloads an attached document directly as a PDF</div>
+            <div class="ep-path">/announcements<span>?new_only=true</span></div>
+            <div class="ep-desc">Filters announcements marked as &ldquo;New&rdquo;</div>
         </div>
         <span class="ep-arrow"><i class="ti ti-arrow-right"></i></span>
         </a>
+
+        <a class="endpoint" href="/announcements?scheme=2019">
+        <span class="method">GET</span>
+        <div class="ep-right">
+            <div class="ep-path">/announcements<span>?scheme=2019</span></div>
+            <div class="ep-desc">Filters by scheme year (e.g. 2015, 2019, 2024, General)</div>
+        </div>
+        <span class="ep-arrow"><i class="ti ti-arrow-right"></i></span>
+        </a>
+
+        <a class="endpoint" href="/docs#/default/get_single_announcement_announcements__announcement_id__get">
+        <span class="method">GET</span>
+        <div class="ep-right">
+            <div class="ep-path">/announcements/<span>{id}</span></div>
+            <div class="ep-desc">Returns a specific announcement by its numeric ID</div>
+        </div>
+        <span class="ep-arrow"><i class="ti ti-arrow-right"></i></span>
+        </a>
+
+        <a class="endpoint" href="/docs#/default/download_pdf_download__encrypt_id__get">
+        <span class="method">GET</span>
+        <div class="ep-right">
+            <div class="ep-path">/download/<span>{encrypt_id}</span></div>
+            <div class="ep-desc">Downloads an attached document directly as a PDF (pre-cached)</div>
+        </div>
+        <span class="ep-arrow"><i class="ti ti-arrow-right"></i></span>
+        </a>
+
         <a class="endpoint" href="/health">
         <span class="method">GET</span>
         <div class="ep-right">
             <div class="ep-path">/health</div>
-            <div class="ep-desc">API status and cache info</div>
+            <div class="ep-desc">API status, Turnstile token state, and cache info</div>
         </div>
         <span class="ep-arrow"><i class="ti ti-arrow-right"></i></span>
         </a>
+
+        <a class="endpoint" href="/refresh">
+        <span class="method">GET</span>
+        <div class="ep-right">
+            <div class="ep-path">/refresh<span>?secret=...</span></div>
+            <div class="ep-desc">Trigger on-demand scraper dispatch (requires secret + 10m cooldown)</div>
+        </div>
+        <span class="ep-arrow"><i class="ti ti-arrow-right"></i></span>
+        </a>
+
+        <a class="endpoint" href="/docs#/default/sync_data_api_sync_post">
+        <span class="method post">POST</span>
+        <div class="ep-right">
+            <div class="ep-path">/api/sync</div>
+            <div class="ep-desc">GitHub Actions scraper ingestion endpoint (requires secret)</div>
+        </div>
+        <span class="ep-arrow"><i class="ti ti-arrow-right"></i></span>
+        </a>
+
         <a class="endpoint" href="/docs">
         <span class="method">GET</span>
         <div class="ep-right">
@@ -520,6 +589,13 @@ async def root():
         // Not affiliated with APJ Abdul Kalam Technological University.<br>
         // Use responsibly. Data sourced from ktu.edu.in.
     </p>
+
+    <script>
+        if (window.location && window.location.origin) {
+            var el = document.getElementById('baseUrl');
+            if (el) el.textContent = window.location.origin;
+        }
+    </script>
     </body>
     </html>
     """

@@ -10,6 +10,11 @@ def test_root_endpoint():
     response = client.get("/")
     assert response.status_code == 200
     assert "KTU Announcements API" in response.text
+    assert "Camoufox" in response.text
+
+def test_favicon_endpoint():
+    response = client.get("/favicon.ico")
+    assert response.status_code == 204
 
 def test_health_check():
     cache.state["announcements"] = []
@@ -19,6 +24,7 @@ def test_health_check():
 
     response = client.get("/health")
     assert response.status_code == 200
+    assert response.headers.get("cache-control") == "public, max-age=60"
     data = response.json()
     assert data["status"] == "online"
     assert data["has_token"] is True
@@ -29,6 +35,7 @@ def test_get_announcements_empty():
     cache.state["last_updated"] = None
     response = client.get("/announcements")
     assert response.status_code == 200
+    assert response.headers.get("cache-control") == "public, max-age=300"
     data = response.json()
     assert data["success"] is True
     assert data["count"] == 0
@@ -160,6 +167,7 @@ def test_sync_and_download_cached_attachment(monkeypatch):
     assert dl_res.status_code == 200
     assert dl_res.content == sample_pdf
     assert dl_res.headers["content-type"] == "application/pdf"
+    assert dl_res.headers.get("cache-control") == "public, max-age=86400"
     assert 'filename="Exam Schedule.pdf"' in dl_res.headers["content-disposition"]
 
 def test_refresh_endpoint_unauthorized(monkeypatch):
