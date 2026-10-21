@@ -10,6 +10,7 @@ import asyncio
 import httpx
 import re
 import os
+import base64
 
 
 
@@ -54,31 +55,73 @@ def health_check():
     }
 
 @app.get("/refresh")
-def refresh_cache():
-    """Manually trigger a cache update or return current cache state if running in decoupled mode."""
-    if os.environ.get("ENABLE_IN_CONTAINER_SCRAPER", "").lower() not in ("true", "1"):
+async def refresh_cache():
+    """Manually trigger a cache update or dispatch GitHub Actions scraper if running in decoupled mode."""
+    if os.environ.get("ENABLE_IN_CONTAINER_SCRAPER", "").lower() in ("true", "1"):
+        cache.update_cache()
         return {
             "status": "online",
-            "mode": "decoupled",
-            "message": "In-container scraper is disabled to preserve Render 512MB RAM limit. Scraping runs via GitHub Actions.",
+            "mode": "in-container",
             "cached_items": len(cache.state["announcements"]),
             "last_updated": cache.state["last_updated"],
-            "has_token": cache.state["x_token"] is not None
+            "has_token": cache.state["x_token"] is not None,
+            "token_preview": cache.state["x_token"][:15] if cache.state["x_token"] else "No token found!"
         }
-    cache.update_cache()
+
+    github_pat = os.environ.get("GITHUB_PAT") or os.environ.get("GH_TOKEN")
+    github_repo = os.environ.get("GITHUB_REPO", "ratherpixelate/ktu-announcements-api")
+
+    if github_pat:
+        dispatch_url = f"https://api.github.com/repos/{github_repo}/actions/workflows/scraper.yml/dispatches"
+        headers = {
+            "Authorization": f"Bearer {github_pat}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "KTU-Announcements-API"
+        }
+        payload = {"ref": "main"}
+        try:
+            async with httpx.AsyncClient() as client:
+                res = await client.post(dispatch_url, json=payload, headers=headers, timeout=10.0)
+                if res.status_code == 204:
+                    return {
+                        "status": "dispatched",
+                        "mode": "decoupled",
+                        "message": "Scraper workflow dispatched on GitHub Actions. Cache will update in ~1-2 minutes.",
+                        "actions_url": f"https://github.com/{github_repo}/actions",
+                        "cached_items": len(cache.state["announcements"]),
+                        "last_updated": cache.state["last_updated"]
+                    }
+                else:
+                    return {
+                        "status": "error",
+                        "mode": "decoupled",
+                        "message": f"GitHub dispatch failed with HTTP {res.status_code}: {res.text}",
+                        "cached_items": len(cache.state["announcements"]),
+                        "last_updated": cache.state["last_updated"]
+                    }
+        except Exception as e:
+            return {
+                "status": "error",
+                "mode": "decoupled",
+                "message": f"Failed to contact GitHub API: {str(e)}",
+                "cached_items": len(cache.state["announcements"]),
+                "last_updated": cache.state["last_updated"]
+            }
+
     return {
         "status": "online",
+        "mode": "decoupled",
+        "message": "In-container scraper is disabled to preserve Render 512MB RAM limit. Scraping runs via GitHub Actions.",
+        "tip": "To trigger an immediate scrape from this endpoint, set GITHUB_PAT in Render environment variables.",
+        "actions_url": f"https://github.com/{github_repo}/actions",
         "cached_items": len(cache.state["announcements"]),
         "last_updated": cache.state["last_updated"],
-        "last_attempt": cache.state["last_attempt"],
-        "last_error": cache.state["last_error"],
-        "has_token": cache.state["x_token"] is not None,
-        "token_preview": cache.state["x_token"][:15] if cache.state["x_token"] else "No token found!"
+        "has_token": cache.state["x_token"] is not None
     }
 
 @app.post("/api/sync")
 def sync_data(payload: SyncPayload, x_sync_secret: str = Header(..., alias="X-Sync-Secret")):
-    """Receive announcements and x-token from an external scraper (e.g. GitHub Actions)."""
+    """Receive announcements, x-token, and pre-cached attachments from external scraper."""
     expected_secret = os.environ.get("SYNC_SECRET")
     if not expected_secret or x_sync_secret != expected_secret:
         raise HTTPException(status_code=403, detail="Invalid or missing sync secret")
@@ -88,13 +131,27 @@ def sync_data(payload: SyncPayload, x_sync_secret: str = Header(..., alias="X-Sy
         cache.state["last_updated"] = datetime.now(timezone.utc)
     if payload.x_token:
         cache.state["x_token"] = payload.x_token
+    if payload.cached_attachments:
+        if "attachments" not in cache.state:
+            cache.state["attachments"] = {}
+        for ca in payload.cached_attachments:
+            try:
+                pdf_bytes = base64.b64decode(ca.content_b64)
+                cache.state["attachments"][ca.encrypt_id] = {
+                    "filename": ca.filename,
+                    "bytes": pdf_bytes
+                }
+            except Exception as e:
+                print(f"Error decoding cached attachment {ca.encrypt_id}: {e}", flush=True)
+
     cache.state["last_attempt"] = datetime.now(timezone.utc)
     cache.state["last_error"] = None
 
-    print(f"[{datetime.now(timezone.utc)}] Successfully synced {len(payload.announcements)} announcements via /api/sync", flush=True)
+    print(f"[{datetime.now(timezone.utc)}] Successfully synced {len(payload.announcements)} announcements and {len(payload.cached_attachments or [])} cached attachments via /api/sync", flush=True)
     return {
         "status": "success",
         "synced_items": len(payload.announcements),
+        "cached_attachments": len(payload.cached_attachments or []),
         "has_token": payload.x_token is not None,
         "last_updated": cache.state["last_updated"]
     }
@@ -142,13 +199,16 @@ def get_single_announcement(announcement_id: str):
 @app.get("/download/{encrypt_id}")
 async def download_pdf(encrypt_id: str):
     """Download an attachment by its encryptId with its original filename."""
-    if not cache.state["x_token"]:
-        raise HTTPException(
-            status_code=503, 
-            detail="API is warming up and hasn't generated an access token yet. Try again in a minute."
+    # 1. First check if the attachment was pre-cached during the scheduled scrape
+    cached = cache.state.get("attachments", {}).get(encrypt_id)
+    if cached:
+        return Response(
+            content=cached["bytes"], 
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{cached["filename"]}"'}
         )
-    
-    # 1. Search the cache for the real file name
+
+    # 2. Search the cache for the real file name
     real_file_name = f"KTU_Document_{encrypt_id[:6]}.pdf"  # Fallback name
     
     for ann in cache.state.get("announcements", []):
@@ -161,12 +221,19 @@ async def download_pdf(encrypt_id: str):
                     clean_name += ".pdf"
                 real_file_name = clean_name
                 break
+
+    # 3. Fallback to live download if not pre-cached
+    if not cache.state.get("x_token"):
+        raise HTTPException(
+            status_code=503, 
+            detail="API is warming up and hasn't generated an access token yet. Try again in a minute."
+        )
     
     try:
         # Fetch the PDF bytes asynchronously
         pdf_bytes = await scraper_download(encrypt_id, cache.state["x_token"])
         
-        # 2. Return the bytes with the dynamically found real_file_name
+        # Return the bytes with the dynamically found real_file_name
         return Response(
             content=pdf_bytes, 
             media_type="application/pdf",
