@@ -118,3 +118,50 @@ def test_sync_endpoint_success(monkeypatch):
     assert cache.state["x_token"] == "token_abc"
     assert len(cache.state["announcements"]) == 1
     assert cache.state["announcements"][0].id == "777"
+
+def test_sync_and_download_cached_attachment(monkeypatch):
+    import base64
+    monkeypatch.setenv("SYNC_SECRET", "super_secret_123")
+    sample_pdf = b"%PDF-1.4 sample pdf content for testing"
+    payload = {
+        "announcements": [
+            {
+                "id": "888",
+                "title": "Notice With Attachment",
+                "date": "2026-05-15",
+                "is_new": True,
+                "attachments": [
+                    {
+                        "name": "Exam Schedule",
+                        "encrypt_id": "test_enc_123"
+                    }
+                ],
+                "schemes": [],
+                "scraped_at": "2026-05-15T10:00:00Z"
+            }
+        ],
+        "x_token": "token_xyz",
+        "cached_attachments": [
+            {
+                "encrypt_id": "test_enc_123",
+                "filename": "Exam Schedule.pdf",
+                "content_b64": base64.b64encode(sample_pdf).decode("ascii")
+            }
+        ]
+    }
+    res = client.post("/api/sync", json=payload, headers={"X-Sync-Secret": "super_secret_123"})
+    assert res.status_code == 200
+    assert res.json()["cached_attachments"] == 1
+
+    # Verify download serves directly from cache without 502 or external calls
+    dl_res = client.get("/download/test_enc_123")
+    assert dl_res.status_code == 200
+    assert dl_res.content == sample_pdf
+    assert dl_res.headers["content-type"] == "application/pdf"
+    assert 'filename="Exam Schedule.pdf"' in dl_res.headers["content-disposition"]
+
+def test_refresh_endpoint_decoupled():
+    res = client.get("/refresh")
+    assert res.status_code == 200
+    assert res.json()["mode"] == "decoupled"
+    assert "actions_url" in res.json()
