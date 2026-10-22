@@ -7,10 +7,31 @@ from app.models import Announcement, Attachment
 client = TestClient(app)
 
 def test_root_endpoint():
+    cache.state["announcements"] = []
+    cache.state["last_error"] = None
     response = client.get("/")
     assert response.status_code == 200
     assert "KTU Announcements API" in response.text
     assert "Camoufox" in response.text
+    assert 'href="/health"' in response.text
+    assert "status-badge" in response.text
+    assert "Warming up" in response.text
+
+    # Test with cached items
+    ann = Announcement(
+        id="123",
+        title="Notice",
+        date=date(2026, 5, 10),
+        is_new=False,
+        attachments=[],
+        schemes=[],
+        scraped_at=datetime.now(timezone.utc)
+    )
+    cache.state["announcements"] = [ann]
+    res_cached = client.get("/")
+    assert res_cached.status_code == 200
+    assert "Live • 1 items" in res_cached.text
+    assert "status-healthy" in res_cached.text
 
 def test_favicon_endpoint():
     response = client.get("/favicon.ico")

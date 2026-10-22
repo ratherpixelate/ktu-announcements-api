@@ -298,9 +298,7 @@ async def download_pdf(encrypt_id: str):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch from KTU: {str(e)}")
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    return """<!DOCTYPE html>
+LANDING_PAGE_HTML = """<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -446,26 +444,66 @@ async def root():
       gap: 8px;
     }
 
-    /* Live Badge */
+    /* Live Status Badge */
     .status-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       padding: 4px 12px;
       border-radius: var(--md-sys-shape-corner-full);
-      background-color: var(--md-sys-color-secondary-container);
-      color: var(--md-sys-color-on-secondary-container);
       font-size: 12px;
       font-weight: 500;
       letter-spacing: 0.02em;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background-color var(--md-sys-motion-duration-short) ease,
+                  border-color var(--md-sys-motion-duration-short) ease,
+                  color var(--md-sys-motion-duration-short) ease;
+    }
+
+    .status-badge:hover {
+      border-color: var(--md-sys-color-outline-variant);
+      opacity: 0.92;
+    }
+
+    .status-healthy {
+      background-color: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+
+    .status-healthy .status-dot {
+      background-color: #22c55e;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
+    }
+
+    .status-warning {
+      background-color: var(--md-sys-color-tertiary-container);
+      color: var(--md-sys-color-on-tertiary-container);
+    }
+
+    .status-warning .status-dot {
+      background-color: #f59e0b;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+    }
+
+    .status-error {
+      background-color: var(--md-sys-color-error-container);
+      color: var(--md-sys-color-on-error-container);
+    }
+
+    .status-error .status-dot {
+      background-color: var(--md-sys-color-error);
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
     }
 
     .status-dot {
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background-color: var(--md-sys-color-primary);
-      box-shadow: 0 0 6px var(--md-sys-color-primary);
+      flex-shrink: 0;
+      transition: background-color var(--md-sys-motion-duration-short) ease,
+                  box-shadow var(--md-sys-motion-duration-short) ease;
     }
 
     /* MD3 Icon Button */
@@ -756,10 +794,10 @@ async def root():
       <span class="brand-title">KTU Announcements API</span>
     </a>
     <div class="app-bar-actions">
-      <div class="status-badge">
+      <a href="/health" class="status-badge __STATUS_CLASS__" id="statusBadge" title="__STATUS_TITLE__">
         <span class="status-dot"></span>
-        <span>Online</span>
-      </div>
+        <span id="statusText">__STATUS_TEXT__</span>
+      </a>
       <button class="icon-button" id="themeToggle" aria-label="Toggle light or dark theme" title="Toggle theme">
         <span class="material-symbols-outlined" id="themeIcon">light_mode</span>
       </button>
@@ -972,6 +1010,87 @@ async def root():
         applyTheme(nextTheme);
       });
     }
+
+    // Real-Time Health & Cache Status Updater
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+
+    function formatRelativeTime(dateString) {
+      if (!dateString) return null;
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffSec = Math.floor((now - date) / 1000);
+      if (diffSec < 60) return 'just now';
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) return `${diffMin}m ago`;
+      const diffHr = Math.floor(diffMin / 60);
+      if (diffHr < 24) return `${diffHr}h ago`;
+      return `${Math.floor(diffHr / 24)}d ago`;
+    }
+
+    async function updateHealthStatus() {
+      if (!statusBadge || !statusText) return;
+      try {
+        const res = await fetch('/health');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        statusBadge.classList.remove('status-healthy', 'status-warning', 'status-error');
+
+        if (data.last_error) {
+          statusBadge.classList.add('status-warning');
+          statusText.textContent = 'Sync Issue';
+          statusBadge.title = `Sync warning: ${data.last_error}. Click for diagnostics.`;
+        } else if (data.cached_items > 0) {
+          statusBadge.classList.add('status-healthy');
+          const relTime = formatRelativeTime(data.last_updated);
+          if (relTime) {
+            statusText.textContent = `Synced ${relTime} • ${data.cached_items} items`;
+          } else {
+            statusText.textContent = `Live • ${data.cached_items} items`;
+          }
+          statusBadge.title = `Cache healthy (${data.cached_items} announcements). Click for diagnostics.`;
+        } else {
+          statusBadge.classList.add('status-warning');
+          statusText.textContent = 'Warming up';
+          statusBadge.title = 'Cache is initializing. Click for diagnostics.';
+        }
+      } catch (err) {
+        statusBadge.classList.remove('status-healthy', 'status-warning');
+        statusBadge.classList.add('status-error');
+        statusText.textContent = 'Disconnected';
+        statusBadge.title = 'Cannot connect to API server. Click to view status.';
+      }
+    }
+
+    window.addEventListener('focus', updateHealthStatus);
+    setInterval(updateHealthStatus, 45000);
+    setTimeout(updateHealthStatus, 1200);
   </script>
 </body>
 </html>"""
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    cached_count = len(cache.state.get("announcements", []))
+    last_error = cache.state.get("last_error")
+
+    if last_error:
+        initial_class = "status-warning"
+        initial_text = "Sync Issue"
+        initial_title = f"Sync warning: {last_error}. Click for diagnostics."
+    elif cached_count > 0:
+        initial_class = "status-healthy"
+        initial_text = f"Live • {cached_count} items"
+        initial_title = f"API and cache healthy ({cached_count} announcements). Click for diagnostics."
+    else:
+        initial_class = "status-warning"
+        initial_text = "Warming up"
+        initial_title = "Cache is initializing. Click for diagnostics."
+
+    return (
+        LANDING_PAGE_HTML
+        .replace("__STATUS_CLASS__", initial_class)
+        .replace("__STATUS_TEXT__", initial_text)
+        .replace("__STATUS_TITLE__", initial_title)
+    )
