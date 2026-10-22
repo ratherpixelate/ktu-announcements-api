@@ -49,8 +49,6 @@ def main():
         return
 
     sync_endpoint = f"{render_api_url.rstrip('/')}/api/sync"
-    print(f"[{datetime.now(timezone.utc)}] Syncing data to {sync_endpoint}...", flush=True)
-
     payload = {
         "announcements": [json.loads(a.model_dump_json()) for a in announcements],
         "x_token": x_token,
@@ -62,16 +60,26 @@ def main():
         "X-Sync-Secret": sync_secret or ""
     }
 
-    try:
-        response = httpx.post(sync_endpoint, json=payload, headers=headers, timeout=30.0)
-        if response.status_code == 200:
-            print(f"[{datetime.now(timezone.utc)}] Successfully synced with Render: {response.json()}", flush=True)
-        else:
-            print(f"[{datetime.now(timezone.utc)}] Sync failed with HTTP {response.status_code}: {response.text}", file=sys.stderr, flush=True)
-            sys.exit(1)
-    except Exception as e:
-        print(f"[{datetime.now(timezone.utc)}] Network error syncing with Render: {e}", file=sys.stderr, flush=True)
-        sys.exit(1)
+    max_sync_attempts = 2
+    for sync_attempt in range(1, max_sync_attempts + 1):
+        print(f"[{datetime.now(timezone.utc)}] [Attempt {sync_attempt}/{max_sync_attempts}] Syncing data to {sync_endpoint}...", flush=True)
+        try:
+            response = httpx.post(sync_endpoint, json=payload, headers=headers, timeout=90.0)
+            if response.status_code == 200:
+                print(f"[{datetime.now(timezone.utc)}] Successfully synced with Render: {response.json()}", flush=True)
+                break
+            else:
+                print(f"[{datetime.now(timezone.utc)}] Sync attempt {sync_attempt} failed with HTTP {response.status_code}: {response.text}", file=sys.stderr, flush=True)
+                if sync_attempt == max_sync_attempts:
+                    sys.exit(1)
+        except Exception as e:
+            print(f"[{datetime.now(timezone.utc)}] Network error syncing with Render on attempt {sync_attempt}: {e}", file=sys.stderr, flush=True)
+            if sync_attempt == max_sync_attempts:
+                sys.exit(1)
+        
+        if sync_attempt < max_sync_attempts:
+            import time
+            time.sleep(5)
 
 if __name__ == "__main__":
     main()

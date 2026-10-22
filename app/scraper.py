@@ -60,35 +60,37 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
         humanize=True,
         i_know_what_im_doing=True
     ) as browser:
-        print(f"[{datetime.now(timezone.utc)}] Camoufox launched. Creating browser page...", flush=True)
-        page = browser.new_page()
-
-        captured_responses = []
-
-        def on_response(response):
-            if "/anon/announcemnts" in response.url:
-                captured_responses.append(response)
-
-        page.on("response", on_response)
+        print(f"[{datetime.now(timezone.utc)}] Camoufox launched successfully.", flush=True)
 
         api_response = None
         max_attempts = 3
         last_error_details = None
+        last_page = None
 
         for attempt in range(1, max_attempts + 1):
-            captured_responses.clear()
+            page = browser.new_page()
+            last_page = page
+            captured_responses = []
+
+            def on_response(response):
+                if "/anon/announcemnts" in response.url:
+                    captured_responses.append(response)
+
+            page.on("response", on_response)
+
             print(f"[{datetime.now(timezone.utc)}] [Attempt {attempt}/{max_attempts}] Navigating to KTU announcements...", flush=True)
             try:
                 page.goto(KTU_URL, timeout=45000, wait_until="domcontentloaded")
             except Exception as e:
                 print(f"[{datetime.now(timezone.utc)}] Navigation error on attempt {attempt}: {e}", flush=True)
+                page.close()
                 page.wait_for_timeout(2000)
                 continue
 
-            print(f"[{datetime.now(timezone.utc)}] Page loaded. Waiting for network response and Turnstile verification...", flush=True)
+            print(f"[{datetime.now(timezone.utc)}] Page loaded. Waiting for network response and Turnstile verification (up to 55s)...", flush=True)
 
             attempt_start = datetime.now(timezone.utc)
-            attempt_timeout = 25
+            attempt_timeout = 55
 
             while (datetime.now(timezone.utc) - attempt_start).total_seconds() < attempt_timeout:
                 handle_turnstile_challenge(page)
@@ -114,18 +116,24 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
                 except Exception:
                     res_body = "(could not read body)"
                 last_error_details = f"HTTP {last_res.status} (x-token: {repr(req_token)[:15]}, body: {res_body[:100]})"
-                print(f"[{datetime.now(timezone.utc)}] Attempt {attempt} got {last_error_details}. Retrying with page reload...", flush=True)
+                print(f"[{datetime.now(timezone.utc)}] Attempt {attempt} got {last_error_details}. Cleaning session and retrying...", flush=True)
             else:
                 last_error_details = "no API response received within timeout"
-                print(f"[{datetime.now(timezone.utc)}] Attempt {attempt} received no API responses. Retrying...", flush=True)
+                print(f"[{datetime.now(timezone.utc)}] Attempt {attempt} received no API responses. Cleaning session and retrying...", flush=True)
 
-            page.wait_for_timeout(2000)
+            if attempt < max_attempts:
+                try:
+                    page.close()
+                except Exception:
+                    pass
+                page.wait_for_timeout(3000)
 
         if not api_response:
             try:
-                page.screenshot(path="scraper_failure.png", full_page=True)
-                Path("scraper_failure.html").write_text(page.content(), encoding="utf-8")
-                print(f"[{datetime.now(timezone.utc)}] Saved diagnostic screenshot to scraper_failure.png and HTML to scraper_failure.html", flush=True)
+                if last_page:
+                    last_page.screenshot(path="scraper_failure.png", full_page=True)
+                    Path("scraper_failure.html").write_text(last_page.content(), encoding="utf-8")
+                    print(f"[{datetime.now(timezone.utc)}] Saved diagnostic screenshot to scraper_failure.png and HTML to scraper_failure.html", flush=True)
             except Exception as e:
                 print(f"[{datetime.now(timezone.utc)}] Failed to save diagnostic artifacts: {e}", flush=True)
 

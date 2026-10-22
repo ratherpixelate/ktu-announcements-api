@@ -5,6 +5,14 @@ on:
     # Run every 30 minutes
     - cron: '*/30 * * * *'
   workflow_dispatch: # Allows manual trigger from GitHub Actions dashboard
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - 'docs/**'
+      - '.gitignore'
 
 jobs:
   scrape-and-sync:

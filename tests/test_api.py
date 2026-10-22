@@ -235,3 +235,29 @@ def test_attachment_internal_fields_excluded():
     assert att["encrypt_id"] == "enc_abc"
     assert "fetch_url" not in att
     assert "method" not in att
+
+def test_load_seed_data():
+    cache.state["announcements"] = []
+    cache.state["last_updated"] = None
+
+    cache.load_seed_data()
+    assert len(cache.state["announcements"]) > 0
+    assert cache.state["last_updated"] is not None
+
+    # Verify seed does not overwrite existing populated cache
+    existing_len = len(cache.state["announcements"])
+    cache.state["announcements"] = [
+        Announcement(
+            id="9999",
+            title="Custom Announcement",
+            date=date(2026, 1, 1),
+            is_new=False,
+            attachments=[],
+            schemes=[],
+            scraped_at=datetime.now(timezone.utc)
+        )
+    ]
+    cache.load_seed_data()
+    assert len(cache.state["announcements"]) == 1
+    assert cache.state["announcements"][0].id == "9999"
+

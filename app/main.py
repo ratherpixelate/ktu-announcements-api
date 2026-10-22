@@ -1,21 +1,24 @@
+import base64
+import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Query, Response, Header
-from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
 from typing import Optional
-from app import cache
-from app.models import AnnouncementsResponse, Announcement, SyncPayload
-from app.scraper import download_attachment as scraper_download
-from fastapi.responses import HTMLResponse
-import httpx
-import os
-import base64
 
+import httpx
+from fastapi import FastAPI, Header, HTTPException, Query, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+
+from app import cache
+from app.models import Announcement, AnnouncementsResponse, SyncPayload
+from app.scraper import download_attachment as scraper_download
 
 
 # This lifespan function runs when the server starts and stops
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Pre-seed cache from disk so the API is immediately ready on fresh container startup
+    cache.load_seed_data()
     if os.environ.get("ENABLE_IN_CONTAINER_SCRAPER", "").lower() in ("true", "1"):
         print("Starting in-container background scraper...", flush=True)
         cache.start_scheduler()
@@ -172,7 +175,7 @@ def sync_data(payload: SyncPayload, x_sync_secret: str = Header(..., alias="X-Sy
     expected_secret = os.environ.get("SYNC_SECRET")
     if not expected_secret or x_sync_secret != expected_secret:
         raise HTTPException(status_code=403, detail="Invalid or missing sync secret")
-    
+
     if payload.announcements:
         cache.state["announcements"] = payload.announcements
         cache.state["last_updated"] = datetime.now(timezone.utc)
@@ -216,13 +219,13 @@ def get_announcements(
 
     if scheme:
         results = [
-            a for a in results 
+            a for a in results
             if scheme in a.schemes or "General" in a.schemes
         ]
 
     if new_only:
         results = [a for a in results if a.is_new]
-        
+
     if limit is not None:
         results = results[:limit]
 
@@ -240,7 +243,7 @@ def get_single_announcement(announcement_id: str, response: Response):
     for ann in cache.state["announcements"]:
         if ann.id == announcement_id:
             return ann
-            
+
     raise HTTPException(status_code=404, detail="Announcement not found")
 
 @app.get("/download/{encrypt_id}")
@@ -250,7 +253,7 @@ async def download_pdf(encrypt_id: str):
     cached = cache.state.get("attachments", {}).get(encrypt_id)
     if cached:
         return Response(
-            content=cached["bytes"], 
+            content=cached["bytes"],
             media_type="application/pdf",
             headers={
                 "Content-Disposition": f'attachment; filename="{cached["filename"]}"',
@@ -260,7 +263,7 @@ async def download_pdf(encrypt_id: str):
 
     # 2. Search the cache for the real file name
     real_file_name = f"KTU_Document_{encrypt_id[:6]}.pdf"  # Fallback name
-    
+
     for ann in cache.state.get("announcements", []):
         for att in ann.attachments:
             if att.encrypt_id == encrypt_id:
@@ -275,24 +278,24 @@ async def download_pdf(encrypt_id: str):
     # 3. Fallback to live download if not pre-cached
     if not cache.state.get("x_token"):
         raise HTTPException(
-            status_code=503, 
+            status_code=503,
             detail="API is warming up and hasn't generated an access token yet. Try again in a minute."
         )
-    
+
     try:
         # Fetch the PDF bytes asynchronously
         pdf_bytes = await scraper_download(encrypt_id, cache.state["x_token"])
-        
+
         # Return the bytes with the dynamically found real_file_name
         return Response(
-            content=pdf_bytes, 
+            content=pdf_bytes,
             media_type="application/pdf",
             headers={
                 "Content-Disposition": f'attachment; filename="{real_file_name}"',
                 "Cache-Control": "public, max-age=86400"
             }
         )
-        
+
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
