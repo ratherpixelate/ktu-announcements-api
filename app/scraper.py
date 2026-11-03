@@ -9,6 +9,7 @@ import base64
 import json
 import shutil
 import os
+import time
 from pathlib import Path
 
 KTU_URL = "https://ktu.edu.in/Menu/announcements"
@@ -68,7 +69,7 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
         last_page = None
 
         for attempt in range(1, max_attempts + 1):
-            page = browser.new_page()
+            page = browser.new_page(ignore_https_errors=True)
             last_page = page
             captured_responses = []
 
@@ -83,8 +84,11 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
                 page.goto(KTU_URL, timeout=45000, wait_until="domcontentloaded")
             except Exception as e:
                 print(f"[{datetime.now(timezone.utc)}] Navigation error on attempt {attempt}: {e}", flush=True)
-                page.close()
-                page.wait_for_timeout(2000)
+                try:
+                    page.close()
+                except Exception:
+                    pass
+                time.sleep(2)
                 continue
 
             print(f"[{datetime.now(timezone.utc)}] Page loaded. Waiting for network response and Turnstile verification (up to 55s)...", flush=True)
@@ -126,7 +130,7 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
                     page.close()
                 except Exception:
                     pass
-                page.wait_for_timeout(3000)
+                time.sleep(3)
 
         if not api_response:
             try:
@@ -202,7 +206,7 @@ async def download_attachment(encrypt_id: str, x_token: str) -> bytes:
     }
     payload = {"encryptId": encrypt_id}
     
-    async with httpx.AsyncClient(http1=True, http2=False) as client:
+    async with httpx.AsyncClient(http1=True, http2=False, verify=False) as client:
         resp = await client.post(url, headers=headers, json=payload, timeout=60.0)
         
         if resp.status_code != 200:
