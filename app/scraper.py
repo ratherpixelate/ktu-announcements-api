@@ -72,12 +72,25 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
             page = browser.new_page(ignore_https_errors=True)
             last_page = page
             captured_responses = []
+            backend_errors = []
 
             def on_response(response):
                 if "/anon/announcemnts" in response.url:
                     captured_responses.append(response)
+                elif "api.ktu.edu.in" in response.url and response.status >= 500:
+                    backend_errors.append(f"HTTP {response.status} on {response.url}")
+
+            def on_request_failed(request):
+                if "api.ktu.edu.in" in request.url:
+                    backend_errors.append(f"Request failed: {request.url} ({request.failure})")
+
+            def on_console(msg):
+                if any(code in msg.text for code in ["500", "502", "503", "504"]):
+                    backend_errors.append(f"Console: {msg.text}")
 
             page.on("response", on_response)
+            page.on("requestfailed", on_request_failed)
+            page.on("console", on_console)
 
             print(f"[{datetime.now(timezone.utc)}] [Attempt {attempt}/{max_attempts}] Navigating to KTU announcements...", flush=True)
             try:
@@ -88,7 +101,8 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
                     page.close()
                 except Exception:
                     pass
-                time.sleep(2)
+                pause = 5 if "UNKNOWN_HOST" in str(e) else 2
+                time.sleep(pause)
                 continue
 
             print(f"[{datetime.now(timezone.utc)}] Page loaded. Waiting for network response and Turnstile verification (up to 55s)...", flush=True)
@@ -121,6 +135,10 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
                     res_body = "(could not read body)"
                 last_error_details = f"HTTP {last_res.status} (x-token: {repr(req_token)[:15]}, body: {res_body[:100]})"
                 print(f"[{datetime.now(timezone.utc)}] Attempt {attempt} got {last_error_details}. Cleaning session and retrying...", flush=True)
+            elif backend_errors:
+                outage_hint = next((err for err in backend_errors if any(code in err for code in ["502", "503", "504", "500"])), backend_errors[0])
+                last_error_details = f"KTU official backend outage ({outage_hint})"
+                print(f"[{datetime.now(timezone.utc)}] [OUTAGE DETECTED] Attempt {attempt}: KTU official servers (api.ktu.edu.in) appear to be down ({outage_hint}). Cleaning session and retrying...", flush=True)
             else:
                 last_error_details = "no API response received within timeout"
                 print(f"[{datetime.now(timezone.utc)}] Attempt {attempt} received no API responses. Cleaning session and retrying...", flush=True)

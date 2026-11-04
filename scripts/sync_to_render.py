@@ -18,6 +18,8 @@ def main():
         announcements, x_token = scrape_announcements()
     except Exception as e:
         print(f"[{datetime.now(timezone.utc)}] Scrape failed: {e}", file=sys.stderr, flush=True)
+        if "outage" in str(e).lower() or any(code in str(e) for code in ["502", "503", "504"]):
+            print(f"[{datetime.now(timezone.utc)}] NOTE: KTU's official website is currently experiencing an outage. Pre-seeded and cached announcements on Render remain safe and served.", file=sys.stderr, flush=True)
         sys.exit(1)
 
     print(f"[{datetime.now(timezone.utc)}] Successfully scraped {len(announcements)} announcements. Token present: {x_token is not None}", flush=True)
