@@ -1,162 +1,165 @@
 {
-  "last_updated": "2026-11-03T13:57:58.061647+00:00",
+  "last_updated": "2026-11-15T15:27:59.678473+00:00",
   "announcements": [
     {
-      "id": "5536",
-      "title": "Lab Exam - B.Tech S3 (R, S) Exam Nov 2026 (2024 Scheme)",
-      "description_html": "<p>It is hereby notified for information of all concerned that the lab examination for the following exam definition is scheduled as detailed below :-</p>",
-      "description_text": "It is hereby notified for information of all concerned that the lab examination for the following exam definition is scheduled as detailed below :-",
-      "date": "2026-11-02",
+      "id": "5555",
+      "title": "Detailed Time Table of BCA Honours S5 (R) Examination November 2026 (2024 Scheme)",
+      "description_html": "<p>The Detailed Time Table for BCA Honours S5 (R) Examination November 2026 (2024 Scheme) is published herewith.</p>",
+      "description_text": "The Detailed Time Table for BCA Honours S5 (R) Examination November 2026 (2024 Scheme) is published herewith.",
+      "date": "2026-11-10",
       "is_new": false,
       "attachments": [
         {
           "name": "Notification",
-          "encrypt_id": "AAAeVA=="
+          "encrypt_id": "AAAebw=="
         }
       ],
       "schemes": [
         "2024"
       ],
-      "scraped_at": "2026-11-03T13:57:35.530869Z"
+      "scraped_at": "2026-11-15T15:27:39.541175Z"
     },
     {
-      "id": "5537",
-      "title": "Lab Exam - B.Tech S3 (WP) (R, S) Exam Nov 2026 (2024 Scheme)",
-      "description_html": "<p>It is hereby notified for information of all concerned that the lab examination for the following exam definition is scheduled as detailed below :-</p>",
-      "description_text": "It is hereby notified for information of all concerned that the lab examination for the following exam definition is scheduled as detailed below :-",
-      "date": "2026-11-02",
+      "id": "5556",
+      "title": "Exam Registration opening :BBA Honours S1 (R,S) Exam Dec 2026",
+      "description_html": "<p>It is hereby informed that Exam Registration for BBA Honours S1 (R,S) Exam Dec 2026<br />is opened as scheduled below:-</p>",
+      "description_text": "It is hereby informed that Exam Registration for BBA Honours S1 (R,S) Exam Dec 2026 is opened as scheduled below:-",
+      "date": "2026-11-10",
       "is_new": false,
       "attachments": [
         {
           "name": "Notification",
-          "encrypt_id": "AAAeVQ=="
+          "encrypt_id": "AAAecA=="
+        }
+      ],
+      "schemes": [],
+      "scraped_at": "2026-11-15T15:27:39.541175Z"
+    },
+    {
+      "id": "5557",
+      "title": "BBA Honours S5 (R) Exam, November 2026 (2024 Scheme)",
+      "description_html": "<p>The detailed timetable for the BBA Honours S5 (R) Exam, November 2026 (2024 Scheme), is published herewith.</p>",
+      "description_text": "The detailed timetable for the BBA Honours S5 (R) Exam, November 2026 (2024 Scheme), is published herewith.",
+      "date": "2026-11-12",
+      "is_new": false,
+      "attachments": [
+        {
+          "name": "Notification",
+          "encrypt_id": "AAAedg=="
         }
       ],
       "schemes": [
         "2024"
       ],
-      "scraped_at": "2026-11-03T13:57:35.530869Z"
+      "scraped_at": "2026-11-15T15:27:39.541175Z"
     },
     {
-      "id": "5538",
-      "title": "Last Date for Registration for B.Tech S3,S5 & S7 - Minor and Honours Examination extended till 03.11.2026",
-      "description_html": "<div>This is to inform that&nbsp;the&nbsp;last date for Exam registration for&nbsp;B.Tech S7 (Hons.) Exam Nov 2026,&nbsp;B.Tech S7 (Minor.) Exam Nov 2026&nbsp;,&nbsp;B.Tech S5 (Hons) Exam Nov 2026,&nbsp;B.Tech S5 (Minor) Exam Nov 2026 &amp;&nbsp;B.Tech S3 (Minor) Exam Nov 2026 have been extended till 03.11.2026.&nbsp;</div>\r\n<div>\r\n<div>\r\n<div>\r\n<div>\r\n<div>\r\n<div>&nbsp;</div>\r\n</div>\r\n</div>\r\n</div>\r\n</div>\r\n</div>",
-      "description_text": "This is to inform that the last date for Exam registration for B.Tech S7 (Hons.) Exam Nov 2026, B.Tech S7 (Minor.) Exam Nov 2026 , B.Tech S5 (Hons) Exam Nov 2026, B.Tech S5 (Minor) Exam Nov 2026 & B.Tech S3 (Minor) Exam Nov 2026 have been extended till 03.11.2026.",
-      "date": "2026-11-03",
-      "is_new": false,
-      "attachments": [],
-      "schemes": [
-        "2024"
-      ],
-      "scraped_at": "2026-11-03T13:57:35.530869Z"
-    },
-    {
-      "id": "5530",
-      "title": "Lab Exam - B.Tech S7 (R,S) Exam Nov 2026 (2019  Scheme)",
-      "description_html": "<p>It is hereby notified for information of all concerned that the lab examination for the following exam definition is scheduled as detailed below</p>",
-      "description_text": "It is hereby notified for information of all concerned that the lab examination for the following exam definition is scheduled as detailed below",
-      "date": "2026-10-31",
+      "id": "5558",
+      "title": "BBA Honours S3 (R, S) Exam, November 2026 (2024 Scheme)",
+      "description_html": "<p>The detailed timetable for the BBA Honours S3 (R, S) Exam, November 2026 (2024 Scheme), is published herewith</p>",
+      "description_text": "The detailed timetable for the BBA Honours S3 (R, S) Exam, November 2026 (2024 Scheme), is published herewith",
+      "date": "2026-11-12",
       "is_new": false,
       "attachments": [
         {
           "name": "Notification",
-          "encrypt_id": "AAAeTg=="
+          "encrypt_id": "AAAedw=="
+        }
+      ],
+      "schemes": [
+        "2024"
+      ],
+      "scraped_at": "2026-11-15T15:27:39.541175Z"
+    },
+    {
+      "id": "5559",
+      "title": "Exam registration for B.Tech S1 (S,FE) S2 (S,FE) Exam Dec 2026 (2019 Scheme)",
+      "description_html": "<p>It is hereby informed that Exam Registration for B.Tech S1 (S,FE) S2 (S,FE) Exam Dec 2026 (2019 Scheme) is opened as scheduled below:-</p>",
+      "description_text": "It is hereby informed that Exam Registration for B.Tech S1 (S,FE) S2 (S,FE) Exam Dec 2026 (2019 Scheme) is opened as scheduled below:-",
+      "date": "2026-11-13",
+      "is_new": false,
+      "attachments": [
+        {
+          "name": "Notification",
+          "encrypt_id": "AAAeew=="
         }
       ],
       "schemes": [
         "2019"
       ],
-      "scraped_at": "2026-11-03T13:57:35.530869Z"
+      "scraped_at": "2026-11-15T15:27:39.541175Z"
     },
     {
-      "id": "5531",
-      "title": "Lab Exam - B.Tech S7 (WP) (R,S) Nov 2026 (2019  Scheme)",
-      "description_html": "<p>It is hereby notified for information of all concerned that the lab examination for the following exam definition is scheduled as detailed below :-</p>",
-      "description_text": "It is hereby notified for information of all concerned that the lab examination for the following exam definition is scheduled as detailed below :-",
-      "date": "2026-10-31",
+      "id": "5560",
+      "title": "MBA S3 (R, S) (2020 Scheme) Examinations November 2026",
+      "description_html": null,
+      "description_text": null,
+      "date": "2026-11-13",
       "is_new": false,
       "attachments": [
         {
           "name": "Notification",
-          "encrypt_id": "AAAeTw=="
+          "encrypt_id": "AAAefA=="
         }
       ],
       "schemes": [
         "2019"
       ],
-      "scraped_at": "2026-11-03T13:57:35.530869Z"
+      "scraped_at": "2026-11-15T15:27:39.541175Z"
     },
     {
-      "id": "5532",
-      "title": "Exam Registration (Regular/FE and Supplementary) for BHMCT S1 (R,S) Exam Dec 2026 (2024 Scheme)",
-      "description_html": "<p>It is hereby informed that Exam Registration for BHMCT S1 (R,S) Exam Dec 2026 (2024 Scheme) is opened for Regular/FE &amp; Supplementary Students/ Colleges, as scheduled below:-</p>",
-      "description_text": "It is hereby informed that Exam Registration for BHMCT S1 (R,S) Exam Dec 2026 (2024 Scheme) is opened for Regular/FE & Supplementary Students/ Colleges, as scheduled below:-",
-      "date": "2026-10-31",
+      "id": "5561",
+      "title": "M.Arch/M.Plan S1 (S,FE ) Examination November 2026,(2016 Scheme) Notified",
+      "description_html": "<p>It is hereby informed that Exam Registration for M.Arch/M.Plan S1 (S,FE ) Examination November 2026 (2016 Scheme) are opened in the portal, as scheduled below:-</p>",
+      "description_text": "It is hereby informed that Exam Registration for M.Arch/M.Plan S1 (S,FE ) Examination November 2026 (2016 Scheme) are opened in the portal, as scheduled below:-",
+      "date": "2026-11-13",
       "is_new": false,
       "attachments": [
         {
           "name": "Notification",
-          "encrypt_id": "AAAeUA=="
+          "encrypt_id": "AAAefQ=="
+        }
+      ],
+      "schemes": [
+        "2015"
+      ],
+      "scraped_at": "2026-11-15T15:27:39.541175Z"
+    },
+    {
+      "id": "5562",
+      "title": "Detailed Time Table of B.Tech S5 (R) Exam November 2026, including (WP) (R) (2024 Scheme)",
+      "description_html": "<p>The detailed Time Table of B.Tech S5 (R) Exam November 2026, including (WP) (R) (2024 Scheme), is published herewith.</p>",
+      "description_text": "The detailed Time Table of B.Tech S5 (R) Exam November 2026, including (WP) (R) (2024 Scheme), is published herewith.",
+      "date": "2026-11-13",
+      "is_new": false,
+      "attachments": [
+        {
+          "name": "Notification",
+          "encrypt_id": "AAAefg=="
         }
       ],
       "schemes": [
         "2024"
       ],
-      "scraped_at": "2026-11-03T13:57:35.530869Z"
+      "scraped_at": "2026-11-15T15:27:39.541175Z"
     },
     {
-      "id": "5533",
-      "title": "Exam Registration (Regular/FE and Supplementary) for B.Des S1 (R,S) Exam Dec 2026 (2024 Scheme)",
-      "description_html": "<p>It is hereby informed that Exam Registration for B.Des S1 (R,S) Exam Dec 2026 (2024 Scheme) is opened for Regular/FE &amp; Supplementary Students/Colleges, as scheduled below:-</p>",
-      "description_text": "It is hereby informed that Exam Registration for B.Des S1 (R,S) Exam Dec 2026 (2024 Scheme) is opened for Regular/FE & Supplementary Students/Colleges, as scheduled below:-",
-      "date": "2026-10-31",
+      "id": "5563",
+      "title": "Detailed Timetable of B.Tech S7 (R, S) Examinations, November 2026 (2019 Scheme) /Working Professionals (R, S) November 2026",
+      "description_html": "<p>The Detailed Timetable of B.Tech S7 (R, S) Examinations, November 2026 (2019 Scheme) / Working Professionals (R, S) November 2026 is published herewith.</p>",
+      "description_text": "The Detailed Timetable of B.Tech S7 (R, S) Examinations, November 2026 (2019 Scheme) / Working Professionals (R, S) November 2026 is published herewith.",
+      "date": "2026-11-13",
       "is_new": false,
       "attachments": [
         {
           "name": "Notification",
-          "encrypt_id": "AAAeUQ=="
-        }
-      ],
-      "schemes": [
-        "2024"
-      ],
-      "scraped_at": "2026-11-03T13:57:35.530869Z"
-    },
-    {
-      "id": "5534",
-      "title": "Exam Registration (Regular/FE and Supplementary) for B.Arch S1 (R,S) Exam Dec 2026 (2021 Scheme)",
-      "description_html": "<p>It is hereby informed that Exam Registration for B.Arch S1 (R,S) Exam Dec 2026 (2021 Scheme) is opened for Regular/FE &amp; Supplementary Students/ Colleges, as scheduled below:-</p>",
-      "description_text": "It is hereby informed that Exam Registration for B.Arch S1 (R,S) Exam Dec 2026 (2021 Scheme) is opened for Regular/FE & Supplementary Students/ Colleges, as scheduled below:-",
-      "date": "2026-10-31",
-      "is_new": false,
-      "attachments": [
-        {
-          "name": "Notification",
-          "encrypt_id": "AAAeUg=="
+          "encrypt_id": "AAAefw=="
         }
       ],
       "schemes": [
         "2019"
       ],
-      "scraped_at": "2026-11-03T13:57:35.530869Z"
-    },
-    {
-      "id": "5535",
-      "title": "Result published - MCA INTEGRTAED -S1 S2,S3,S5,S7&S9 (2020 Scheme)",
-      "description_html": "<p>It is hereby notified that the results of the following examinations have been published. The detailed results are available in the Student and College login.<br />MCA Integrated S1(S,FE) Examination July 2026 (2020 Scheme)<br />MCA Integrated S2(R,S) Examination May 2026 (2020 Scheme)<br />MCA Integrated S3(S,FE) Examination July 2026 (2020 Scheme)<br />MCA Integrated S5(S,FE) Examination July 2026 (2020 Scheme)<br />MCA Integrated S7S,FE) Examination July 2026 (2020 Scheme)<br />MCA Integrated S9(S,FE) Examination July 2026 (2020 Scheme)</p>",
-      "description_text": "It is hereby notified that the results of the following examinations have been published. The detailed results are available in the Student and College login. MCA Integrated S1(S,FE) Examination July 2026 (2020 Scheme) MCA Integrated S2(R,S) Examination May 2026 (2020 Scheme) MCA Integrated S3(S,FE) Examination July 2026 (2020 Scheme) MCA Integrated S5(S,FE) Examination July 2026 (2020 Scheme) MCA Integrated S7S,FE) Examination July 2026 (2020 Scheme) MCA Integrated S9(S,FE) Examination July 2026 (2020 Scheme)",
-      "date": "2026-10-31",
-      "is_new": false,
-      "attachments": [
-        {
-          "name": "Notification",
-          "encrypt_id": "AAAeUw=="
-        }
-      ],
-      "schemes": [
-        "2019"
-      ],
-      "scraped_at": "2026-11-03T13:57:35.530869Z"
+      "scraped_at": "2026-11-15T15:27:39.541175Z"
     },
     {
       "id": "5487",
@@ -174,7 +177,7 @@
       "schemes": [
         "General"
       ],
-      "scraped_at": "2026-11-03T13:57:35.530869Z"
+      "scraped_at": "2026-11-15T15:27:39.541175Z"
     }
   ]
 }

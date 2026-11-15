@@ -76,16 +76,17 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
 
             def on_response(response):
                 if "/anon/announcemnts" in response.url:
-                    captured_responses.append(response)
-                elif "api.ktu.edu.in" in response.url and response.status >= 500:
-                    backend_errors.append(f"HTTP {response.status} on {response.url}")
+                    if response.status == 200:
+                        captured_responses.append(response)
+                    elif response.status >= 500:
+                        backend_errors.append(f"HTTP {response.status} on {response.url}")
 
             def on_request_failed(request):
-                if "api.ktu.edu.in" in request.url:
+                if "/anon/announcemnts" in request.url:
                     backend_errors.append(f"Request failed: {request.url} ({request.failure})")
 
             def on_console(msg):
-                if any(code in msg.text for code in ["500", "502", "503", "504"]):
+                if any(code in msg.text for code in ["500", "502", "503", "504"]) and "announc" in msg.text.lower():
                     backend_errors.append(f"Console: {msg.text}")
 
             page.on("response", on_response)
@@ -105,10 +106,10 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
                 time.sleep(pause)
                 continue
 
-            print(f"[{datetime.now(timezone.utc)}] Page loaded. Waiting for network response and Turnstile verification (up to 55s)...", flush=True)
+            print(f"[{datetime.now(timezone.utc)}] Page loaded. Waiting for network response and Turnstile verification (up to 80s)...", flush=True)
 
             attempt_start = datetime.now(timezone.utc)
-            attempt_timeout = 55
+            attempt_timeout = 80
 
             while (datetime.now(timezone.utc) - attempt_start).total_seconds() < attempt_timeout:
                 handle_turnstile_challenge(page)
