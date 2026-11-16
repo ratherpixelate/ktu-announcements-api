@@ -193,6 +193,12 @@ def sync_data(payload: SyncPayload, x_sync_secret: str = Header(..., alias="X-Sy
             except Exception as e:
                 print(f"Error decoding cached attachment {ca.encrypt_id}: {e}", flush=True)
 
+        # Retain up to 25 attachments in memory to bound container RAM
+        if len(cache.state["attachments"]) > 25:
+            keys_to_remove = list(cache.state["attachments"].keys())[:-25]
+            for k in keys_to_remove:
+                cache.state["attachments"].pop(k, None)
+
     cache.state["last_attempt"] = datetime.now(timezone.utc)
     cache.state["last_error"] = None
 

@@ -13,15 +13,45 @@ from app.scraper import scrape_announcements
 
 def main():
     print(f"[{datetime.now(timezone.utc)}] Starting scheduled scrape...", flush=True)
+
+    seed_file = Path(__file__).resolve().parent.parent / "data" / "seed_attachments.json"
+    existing_cached_dict = {}
+    if seed_file.exists():
+        try:
+            items = json.loads(seed_file.read_text(encoding="utf-8"))
+            for it in items:
+                eid = it.get("encrypt_id")
+                if eid:
+                    existing_cached_dict[eid] = it
+        except Exception as e:
+            print(f"[{datetime.now(timezone.utc)}] Warning loading seed attachments: {e}", flush=True)
+
+    already_cached_ids = set(existing_cached_dict.keys())
+
     try:
-        announcements, x_token, cached_attachments = scrape_announcements(fetch_attachments=True)
+        announcements, x_token, new_cached_attachments = scrape_announcements(
+            fetch_attachments=True,
+            already_cached_ids=already_cached_ids
+        )
     except Exception as e:
         print(f"[{datetime.now(timezone.utc)}] Scrape failed: {e}", file=sys.stderr, flush=True)
         if "outage" in str(e).lower() or any(code in str(e) for code in ["502", "503", "504"]):
             print(f"[{datetime.now(timezone.utc)}] NOTE: KTU's official website is currently experiencing an outage. Pre-seeded and cached announcements on Render remain safe and served.", file=sys.stderr, flush=True)
         sys.exit(1)
 
-    print(f"[{datetime.now(timezone.utc)}] Successfully scraped {len(announcements)} announcements and {len(cached_attachments)} attachments. Token present: {x_token is not None}", flush=True)
+    print(f"[{datetime.now(timezone.utc)}] Successfully scraped {len(announcements)} announcements ({len(new_cached_attachments)} new attachments fetched). Token present: {x_token is not None}", flush=True)
+
+    # Merge newly fetched attachments into the persistent cache
+    for new_att in new_cached_attachments:
+        existing_cached_dict[new_att["encrypt_id"]] = new_att
+
+    all_cached_list = list(existing_cached_dict.values())[-25:]
+    if new_cached_attachments:
+        try:
+            seed_file.write_text(json.dumps(all_cached_list, indent=2), encoding="utf-8")
+            print(f"[{datetime.now(timezone.utc)}] Updated {seed_file.name} with {len(all_cached_list)} attachments.", flush=True)
+        except Exception as e:
+            print(f"[{datetime.now(timezone.utc)}] Warning updating seed attachments: {e}", flush=True)
 
     render_api_url = os.environ.get("RENDER_API_URL")
     sync_secret = os.environ.get("SYNC_SECRET")
@@ -34,7 +64,7 @@ def main():
     payload = {
         "announcements": [json.loads(a.model_dump_json()) for a in announcements],
         "x_token": x_token,
-        "cached_attachments": cached_attachments
+        "cached_attachments": all_cached_list
     }
 
     headers = {

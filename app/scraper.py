@@ -38,7 +38,10 @@ def handle_turnstile_challenge(page):
     except Exception:
         pass
 
-def scrape_announcements(fetch_attachments: bool = True) -> tuple[list[Announcement], str | None, list[dict]]:
+def scrape_announcements(
+    fetch_attachments: bool = True,
+    already_cached_ids: set[str] | None = None
+) -> tuple[list[Announcement], str | None, list[dict]]:
     """Fetch announcements and pre-cache attachments using Camoufox anti-detect browser."""
     announcements = []
     cached_attachments = []
@@ -211,11 +214,15 @@ def scrape_announcements(fetch_attachments: bool = True) -> tuple[list[Announcem
 
         # In-browser attachment pre-fetching while Turnstile session is active
         if fetch_attachments and api_response and page:
-            print(f"[{datetime.now(timezone.utc)}] Starting in-browser attachment pre-fetching...", flush=True)
+            cached_ids = already_cached_ids or set()
+            print(f"[{datetime.now(timezone.utc)}] Checking attachments (already cached: {len(cached_ids)})...", flush=True)
             for ann in announcements:
                 for att in ann.attachments:
                     eid = att.encrypt_id
                     if not eid:
+                        continue
+                    if eid in cached_ids:
+                        print(f"[{datetime.now(timezone.utc)}] Skipping already-cached attachment {eid} ({att.name})", flush=True)
                         continue
                     try:
                         # Check if button exists in DOM
@@ -264,7 +271,7 @@ def scrape_announcements(fetch_attachments: bool = True) -> tuple[list[Announcem
                             "content_b64": raw_text
                         })
                         print(f"[{datetime.now(timezone.utc)}] Successfully pre-cached: {fname} ({len(decoded)} bytes)", flush=True)
-                        time.sleep(0.5)
+                        time.sleep(1.5)
                     except Exception as e:
                         print(f"[{datetime.now(timezone.utc)}] Warning: failed to pre-cache attachment {eid}: {e}", flush=True)
 

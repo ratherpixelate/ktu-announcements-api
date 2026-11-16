@@ -197,6 +197,42 @@ def test_sync_and_download_cached_attachment(monkeypatch):
     assert dl_res.headers.get("cache-control") == "public, max-age=86400"
     assert 'filename="Exam Schedule.pdf"' in dl_res.headers["content-disposition"]
 
+def test_sync_merges_and_prunes_attachments(monkeypatch):
+    import base64
+    monkeypatch.setenv("SYNC_SECRET", "super_secret_123")
+    cache.state["attachments"] = {}
+
+    # Sync first attachment
+    p1 = {
+        "announcements": [],
+        "cached_attachments": [
+            {"encrypt_id": "id_1", "filename": "doc1.pdf", "content_b64": base64.b64encode(b"%PDF-doc1").decode()}
+        ]
+    }
+    client.post("/api/sync", json=p1, headers={"X-Sync-Secret": "super_secret_123"})
+    assert "id_1" in cache.state["attachments"]
+
+    # Sync second attachment (should merge, not overwrite)
+    p2 = {
+        "announcements": [],
+        "cached_attachments": [
+            {"encrypt_id": "id_2", "filename": "doc2.pdf", "content_b64": base64.b64encode(b"%PDF-doc2").decode()}
+        ]
+    }
+    client.post("/api/sync", json=p2, headers={"X-Sync-Secret": "super_secret_123"})
+    assert "id_1" in cache.state["attachments"]
+    assert "id_2" in cache.state["attachments"]
+    assert len(cache.state["attachments"]) == 2
+
+    # Verify 25-attachment cap
+    many_atts = [
+        {"encrypt_id": f"cap_id_{i}", "filename": f"f_{i}.pdf", "content_b64": base64.b64encode(b"%PDF").decode()}
+        for i in range(30)
+    ]
+    client.post("/api/sync", json={"announcements": [], "cached_attachments": many_atts}, headers={"X-Sync-Secret": "super_secret_123"})
+    assert len(cache.state["attachments"]) == 25
+
+
 def test_refresh_endpoint_unauthorized(monkeypatch):
     monkeypatch.setenv("SYNC_SECRET", "super_secret_123")
     res = client.get("/refresh")

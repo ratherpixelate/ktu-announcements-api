@@ -87,7 +87,8 @@ def update_cache():
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
         # Protect against hung scraping threads by enforcing a 180s hard watchdog timeout
-        future = executor.submit(scrape_announcements)
+        cached_ids = set(state.get("attachments", {}).keys())
+        future = executor.submit(scrape_announcements, fetch_attachments=True, already_cached_ids=cached_ids)
         results, token, cached_attachments = future.result(timeout=180)
         
         # We no longer need the 'global' keyword because we are modifying a dict
@@ -110,7 +111,12 @@ def update_cache():
                     }
                 except Exception as e:
                     print(f"Error caching attachment {ca.get('encrypt_id')}: {e}", flush=True)
-            print(f"[{datetime.now(timezone.utc)}] Cached {len(cached_attachments)} attachments.", flush=True)
+            # Retain up to 25 attachments in memory to bound RAM usage
+            if len(state["attachments"]) > 25:
+                keys_to_remove = list(state["attachments"].keys())[:-25]
+                for k in keys_to_remove:
+                    state["attachments"].pop(k, None)
+            print(f"[{datetime.now(timezone.utc)}] Cached {len(cached_attachments)} new attachments (total in memory: {len(state['attachments'])}).", flush=True)
 
         state["last_error"] = None
             
