@@ -261,3 +261,31 @@ def test_load_seed_data():
     assert len(cache.state["announcements"]) == 1
     assert cache.state["announcements"][0].id == "9999"
 
+def test_download_uncached_attachment_returns_404():
+    # Clear cache to guarantee it is not cached
+    cache.state["attachments"] = {}
+    cache.state["announcements"] = [
+        Announcement(
+            id="1234",
+            title="Known Announcement",
+            date=date(2026, 11, 1),
+            is_new=False,
+            attachments=[Attachment(name="Circular", encrypt_id="known_enc_id")],
+            schemes=[],
+            scraped_at=datetime.now(timezone.utc)
+        )
+    ]
+
+    res = client.get("/download/known_enc_id")
+    assert res.status_code == 404
+    body = res.json()
+    assert body["detail"]["error"] == "Attachment not found in cache"
+    assert body["detail"]["announcement"] == "Known Announcement"
+    assert "official_portal_url" in body["detail"]
+
+    # Unknown encrypt_id
+    res_unknown = client.get("/download/totally_unknown_enc")
+    assert res_unknown.status_code == 404
+    assert res_unknown.json()["detail"]["announcement"] is None
+
+

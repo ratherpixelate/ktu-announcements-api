@@ -1,93 +1,23 @@
 {
-  "last_updated": "2026-11-15T15:27:59.678473+00:00",
+  "last_updated": "2026-11-16T11:50:07.472691+00:00",
   "announcements": [
     {
-      "id": "5555",
-      "title": "Detailed Time Table of BCA Honours S5 (R) Examination November 2026 (2024 Scheme)",
-      "description_html": "<p>The Detailed Time Table for BCA Honours S5 (R) Examination November 2026 (2024 Scheme) is published herewith.</p>",
-      "description_text": "The Detailed Time Table for BCA Honours S5 (R) Examination November 2026 (2024 Scheme) is published herewith.",
-      "date": "2026-11-10",
+      "id": "5568",
+      "title": "Schedule for document verification of Ph.D applicants  for the Academic Year 2026-27.",
+      "description_html": null,
+      "description_text": null,
+      "date": "2026-11-16",
       "is_new": false,
       "attachments": [
         {
           "name": "Notification",
-          "encrypt_id": "AAAebw=="
+          "encrypt_id": "AAAehw=="
         }
       ],
       "schemes": [
-        "2024"
+        "General"
       ],
-      "scraped_at": "2026-11-15T15:27:39.541175Z"
-    },
-    {
-      "id": "5556",
-      "title": "Exam Registration opening :BBA Honours S1 (R,S) Exam Dec 2026",
-      "description_html": "<p>It is hereby informed that Exam Registration for BBA Honours S1 (R,S) Exam Dec 2026<br />is opened as scheduled below:-</p>",
-      "description_text": "It is hereby informed that Exam Registration for BBA Honours S1 (R,S) Exam Dec 2026 is opened as scheduled below:-",
-      "date": "2026-11-10",
-      "is_new": false,
-      "attachments": [
-        {
-          "name": "Notification",
-          "encrypt_id": "AAAecA=="
-        }
-      ],
-      "schemes": [],
-      "scraped_at": "2026-11-15T15:27:39.541175Z"
-    },
-    {
-      "id": "5557",
-      "title": "BBA Honours S5 (R) Exam, November 2026 (2024 Scheme)",
-      "description_html": "<p>The detailed timetable for the BBA Honours S5 (R) Exam, November 2026 (2024 Scheme), is published herewith.</p>",
-      "description_text": "The detailed timetable for the BBA Honours S5 (R) Exam, November 2026 (2024 Scheme), is published herewith.",
-      "date": "2026-11-12",
-      "is_new": false,
-      "attachments": [
-        {
-          "name": "Notification",
-          "encrypt_id": "AAAedg=="
-        }
-      ],
-      "schemes": [
-        "2024"
-      ],
-      "scraped_at": "2026-11-15T15:27:39.541175Z"
-    },
-    {
-      "id": "5558",
-      "title": "BBA Honours S3 (R, S) Exam, November 2026 (2024 Scheme)",
-      "description_html": "<p>The detailed timetable for the BBA Honours S3 (R, S) Exam, November 2026 (2024 Scheme), is published herewith</p>",
-      "description_text": "The detailed timetable for the BBA Honours S3 (R, S) Exam, November 2026 (2024 Scheme), is published herewith",
-      "date": "2026-11-12",
-      "is_new": false,
-      "attachments": [
-        {
-          "name": "Notification",
-          "encrypt_id": "AAAedw=="
-        }
-      ],
-      "schemes": [
-        "2024"
-      ],
-      "scraped_at": "2026-11-15T15:27:39.541175Z"
-    },
-    {
-      "id": "5559",
-      "title": "Exam registration for B.Tech S1 (S,FE) S2 (S,FE) Exam Dec 2026 (2019 Scheme)",
-      "description_html": "<p>It is hereby informed that Exam Registration for B.Tech S1 (S,FE) S2 (S,FE) Exam Dec 2026 (2019 Scheme) is opened as scheduled below:-</p>",
-      "description_text": "It is hereby informed that Exam Registration for B.Tech S1 (S,FE) S2 (S,FE) Exam Dec 2026 (2019 Scheme) is opened as scheduled below:-",
-      "date": "2026-11-13",
-      "is_new": false,
-      "attachments": [
-        {
-          "name": "Notification",
-          "encrypt_id": "AAAeew=="
-        }
-      ],
-      "schemes": [
-        "2019"
-      ],
-      "scraped_at": "2026-11-15T15:27:39.541175Z"
+      "scraped_at": "2026-11-16T11:50:07.472691Z"
     },
     {
       "id": "5560",
@@ -105,7 +35,7 @@
       "schemes": [
         "2019"
       ],
-      "scraped_at": "2026-11-15T15:27:39.541175Z"
+      "scraped_at": "2026-11-16T11:50:07.472691Z"
     },
     {
       "id": "5561",
@@ -123,7 +53,7 @@
       "schemes": [
         "2015"
       ],
-      "scraped_at": "2026-11-15T15:27:39.541175Z"
+      "scraped_at": "2026-11-16T11:50:07.472691Z"
     },
     {
       "id": "5562",
@@ -141,7 +71,7 @@
       "schemes": [
         "2024"
       ],
-      "scraped_at": "2026-11-15T15:27:39.541175Z"
+      "scraped_at": "2026-11-16T11:50:07.472691Z"
     },
     {
       "id": "5563",
@@ -159,7 +89,79 @@
       "schemes": [
         "2019"
       ],
-      "scraped_at": "2026-11-15T15:27:39.541175Z"
+      "scraped_at": "2026-11-16T11:50:07.472691Z"
+    },
+    {
+      "id": "5564",
+      "title": "Detailed Time Table of B.Des S7 (R, S) Examinations, November 2026 (2019 Scheme)",
+      "description_html": "<p>The detailed timetable for B.Des S7 (R, S) Examination, November 2026 (2019 Scheme), is published herewith.</p>",
+      "description_text": "The detailed timetable for B.Des S7 (R, S) Examination, November 2026 (2019 Scheme), is published herewith.",
+      "date": "2026-11-16",
+      "is_new": false,
+      "attachments": [
+        {
+          "name": "Notification",
+          "encrypt_id": "AAAegQ=="
+        }
+      ],
+      "schemes": [
+        "2019"
+      ],
+      "scraped_at": "2026-11-16T11:50:07.472691Z"
+    },
+    {
+      "id": "5565",
+      "title": "Registration for B.Tech S6 (S, FE) Exam Dec 2026 (2019 Scheme) for Supplementary candidates - Opened",
+      "description_html": "<p>It is hereby notified for information of all concerned that the registration for Supplementary Examination w.r.t B.Tech S6 (S, FE) Exam Dec 2026 (2019 Scheme) is now open. Details are as shown below :-</p>",
+      "description_text": "It is hereby notified for information of all concerned that the registration for Supplementary Examination w.r.t B.Tech S6 (S, FE) Exam Dec 2026 (2019 Scheme) is now open. Details are as shown below :-",
+      "date": "2026-11-16",
+      "is_new": false,
+      "attachments": [
+        {
+          "name": "Notification",
+          "encrypt_id": "AAAehA=="
+        }
+      ],
+      "schemes": [
+        "2019"
+      ],
+      "scraped_at": "2026-11-16T11:50:07.472691Z"
+    },
+    {
+      "id": "5566",
+      "title": "UG programmes - Revised Examination Calendar  November 2026 to February 2027- Regular/Supplementary end- semester Examinations",
+      "description_html": "<p>The Revised Examination Calendar, which provides the slot-wise dates of end-semester examinations for UG programmes from November 2026 to February 2027, is notified herewith.</p>",
+      "description_text": "The Revised Examination Calendar, which provides the slot-wise dates of end-semester examinations for UG programmes from November 2026 to February 2027, is notified herewith.",
+      "date": "2026-11-16",
+      "is_new": false,
+      "attachments": [
+        {
+          "name": "Notification",
+          "encrypt_id": "AAAehQ=="
+        }
+      ],
+      "schemes": [
+        "General"
+      ],
+      "scraped_at": "2026-11-16T11:50:07.472691Z"
+    },
+    {
+      "id": "5567",
+      "title": "Detailed Time Table of BCA Honours S3 (R, S) Exam, November 2026 (2024 Scheme)",
+      "description_html": "<p>The detailed timetable for the BCA Honours S3 (R, S) Exam, November 2026 (2024 Scheme), is published herewith.</p>",
+      "description_text": "The detailed timetable for the BCA Honours S3 (R, S) Exam, November 2026 (2024 Scheme), is published herewith.",
+      "date": "2026-11-16",
+      "is_new": false,
+      "attachments": [
+        {
+          "name": "Notification",
+          "encrypt_id": "AAAehg=="
+        }
+      ],
+      "schemes": [
+        "2024"
+      ],
+      "scraped_at": "2026-11-16T11:50:07.472691Z"
     },
     {
       "id": "5487",
@@ -177,7 +179,7 @@
       "schemes": [
         "General"
       ],
-      "scraped_at": "2026-11-15T15:27:39.541175Z"
+      "scraped_at": "2026-11-16T11:50:07.472691Z"
     }
   ]
 }

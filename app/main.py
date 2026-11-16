@@ -11,7 +11,6 @@ from fastapi.responses import HTMLResponse
 
 from app import cache
 from app.models import Announcement, AnnouncementsResponse, SyncPayload
-from app.scraper import download_attachment as scraper_download
 
 
 # This lifespan function runs when the server starts and stops
@@ -249,7 +248,7 @@ def get_single_announcement(announcement_id: str, response: Response):
 @app.get("/download/{encrypt_id}")
 async def download_pdf(encrypt_id: str):
     """Download an attachment by its encryptId with its original filename."""
-    # 1. First check if the attachment was pre-cached during the scheduled scrape
+    # 1. First check if the attachment was pre-cached
     cached = cache.state.get("attachments", {}).get(encrypt_id)
     if cached:
         return Response(
@@ -261,45 +260,26 @@ async def download_pdf(encrypt_id: str):
             }
         )
 
-    # 2. Search the cache for the real file name
-    real_file_name = f"KTU_Document_{encrypt_id[:6]}.pdf"  # Fallback name
-
+    # 2. Check if the encrypt_id belongs to a known announcement for context
+    announcement_title = None
     for ann in cache.state.get("announcements", []):
         for att in ann.attachments:
             if att.encrypt_id == encrypt_id:
-                # Clean the string to ensure it's a valid filename (remove weird characters)
-                clean_name = "".join(c for c in att.name if c.isalnum() or c in " ._-").strip()
-                # Ensure it ends with .pdf
-                if not clean_name.lower().endswith(".pdf"):
-                    clean_name += ".pdf"
-                real_file_name = clean_name
+                announcement_title = ann.title
                 break
+        if announcement_title:
+            break
 
-    # 3. Fallback to live download if not pre-cached
-    if not cache.state.get("x_token"):
-        raise HTTPException(
-            status_code=503,
-            detail="API is warming up and hasn't generated an access token yet. Try again in a minute."
-        )
-
-    try:
-        # Fetch the PDF bytes asynchronously
-        pdf_bytes = await scraper_download(encrypt_id, cache.state["x_token"])
-
-        # Return the bytes with the dynamically found real_file_name
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f'attachment; filename="{real_file_name}"',
-                "Cache-Control": "public, max-age=86400"
-            }
-        )
-
-    except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch from KTU: {str(e)}")
+    raise HTTPException(
+        status_code=404,
+        detail={
+            "error": "Attachment not found in cache",
+            "message": "KTU enforces per-request Cloudflare Turnstile verification. Attachments from the latest announcements are pre-cached and available directly. For older or uncached attachments, please view them on the official KTU portal.",
+            "encrypt_id": encrypt_id,
+            "announcement": announcement_title,
+            "official_portal_url": "https://ktu.edu.in/Menu/announcements"
+        }
+    )
 
 LANDING_PAGE_HTML = """<!DOCTYPE html>
 <html lang="en" data-theme="dark">

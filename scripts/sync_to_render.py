@@ -8,40 +8,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import json
 import httpx
 import base64
-import asyncio
 from datetime import datetime, timezone
-from app.scraper import scrape_announcements, download_attachment
+from app.scraper import scrape_announcements
 
 def main():
     print(f"[{datetime.now(timezone.utc)}] Starting scheduled scrape...", flush=True)
     try:
-        announcements, x_token = scrape_announcements()
+        announcements, x_token, cached_attachments = scrape_announcements(fetch_attachments=True)
     except Exception as e:
         print(f"[{datetime.now(timezone.utc)}] Scrape failed: {e}", file=sys.stderr, flush=True)
         if "outage" in str(e).lower() or any(code in str(e) for code in ["502", "503", "504"]):
             print(f"[{datetime.now(timezone.utc)}] NOTE: KTU's official website is currently experiencing an outage. Pre-seeded and cached announcements on Render remain safe and served.", file=sys.stderr, flush=True)
         sys.exit(1)
 
-    print(f"[{datetime.now(timezone.utc)}] Successfully scraped {len(announcements)} announcements. Token present: {x_token is not None}", flush=True)
-
-    cached_attachments = []
-    if x_token:
-        print(f"[{datetime.now(timezone.utc)}] Pre-fetching attachments while token is fresh...", flush=True)
-        for ann in announcements:
-            for att in ann.attachments:
-                try:
-                    pdf_bytes = asyncio.run(download_attachment(att.encrypt_id, x_token))
-                    clean_name = "".join(c for c in att.name if c.isalnum() or c in " ._-").strip()
-                    if not clean_name.lower().endswith(".pdf"):
-                        clean_name += ".pdf"
-                    cached_attachments.append({
-                        "encrypt_id": att.encrypt_id,
-                        "filename": clean_name,
-                        "content_b64": base64.b64encode(pdf_bytes).decode("ascii")
-                    })
-                    print(f"[{datetime.now(timezone.utc)}] Pre-fetched: {clean_name} ({len(pdf_bytes)} bytes)", flush=True)
-                except Exception as e:
-                    print(f"[{datetime.now(timezone.utc)}] Warning: could not pre-fetch attachment {att.encrypt_id}: {e}", flush=True)
+    print(f"[{datetime.now(timezone.utc)}] Successfully scraped {len(announcements)} announcements and {len(cached_attachments)} attachments. Token present: {x_token is not None}", flush=True)
 
     render_api_url = os.environ.get("RENDER_API_URL")
     sync_secret = os.environ.get("SYNC_SECRET")

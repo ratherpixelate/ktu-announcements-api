@@ -38,9 +38,10 @@ def handle_turnstile_challenge(page):
     except Exception:
         pass
 
-def scrape_announcements() -> tuple[list[Announcement], str | None]:
-    """Fetch announcements by intercepting the API call using Camoufox anti-detect browser."""
+def scrape_announcements(fetch_attachments: bool = True) -> tuple[list[Announcement], str | None, list[dict]]:
+    """Fetch announcements and pre-cache attachments using Camoufox anti-detect browser."""
     announcements = []
+    cached_attachments = []
     scraped_at = datetime.now(timezone.utc)
     x_token = None
 
@@ -208,7 +209,66 @@ def scrape_announcements() -> tuple[list[Announcement], str | None]:
                 )
                 announcements.append(announcement)
 
-    return announcements, x_token
+        # In-browser attachment pre-fetching while Turnstile session is active
+        if fetch_attachments and api_response and page:
+            print(f"[{datetime.now(timezone.utc)}] Starting in-browser attachment pre-fetching...", flush=True)
+            for ann in announcements:
+                for att in ann.attachments:
+                    eid = att.encrypt_id
+                    if not eid:
+                        continue
+                    try:
+                        # Check if button exists in DOM
+                        btn_exists = page.evaluate(f'''() => {{
+                            return !!document.querySelector('button[value="{eid}"]');
+                        }}''')
+                        if not btn_exists:
+                            print(f"[{datetime.now(timezone.utc)}] Attachment button not in DOM for {eid}, skipping", flush=True)
+                            continue
+
+                        with page.expect_response(
+                            lambda r: "getAttachment" in r.url and r.status == 200,
+                            timeout=15000
+                        ) as res_info:
+                            page.evaluate(f'''() => {{
+                                const btn = document.querySelector('button[value="{eid}"]');
+                                if (btn) btn.click();
+                            }}''')
+
+                        res = res_info.value
+                        body = res.body()
+                        disposition = res.headers.get("content-disposition", "")
+
+                        fname = None
+                        if "filename=" in disposition:
+                            fname = disposition.split("filename=")[-1].strip('"\' ;')
+
+                        if not fname:
+                            clean_name = "".join(c for c in att.name if c.isalnum() or c in " ._-").strip()
+                            if not clean_name.lower().endswith(".pdf"):
+                                clean_name += ".pdf"
+                            fname = clean_name
+
+                        raw_text = body.decode("utf-8", errors="ignore").strip().strip('"')
+                        if "&&" in raw_text:
+                            raw_text = raw_text[:raw_text.index("&&")]
+
+                        decoded = base64.b64decode(raw_text)
+                        if not decoded.startswith(b"%PDF"):
+                            print(f"[{datetime.now(timezone.utc)}] Warning: attachment {eid} decoded content does not start with %PDF", flush=True)
+                            continue
+
+                        cached_attachments.append({
+                            "encrypt_id": eid,
+                            "filename": fname,
+                            "content_b64": raw_text
+                        })
+                        print(f"[{datetime.now(timezone.utc)}] Successfully pre-cached: {fname} ({len(decoded)} bytes)", flush=True)
+                        time.sleep(0.5)
+                    except Exception as e:
+                        print(f"[{datetime.now(timezone.utc)}] Warning: failed to pre-cache attachment {eid}: {e}", flush=True)
+
+    return announcements, x_token, cached_attachments
 
 async def download_attachment(encrypt_id: str, x_token: str) -> bytes:
     if not x_token:

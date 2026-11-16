@@ -1,3 +1,4 @@
+import base64
 import concurrent.futures
 import json
 from datetime import datetime, timezone
@@ -56,6 +57,27 @@ def load_seed_data():
     except Exception as e:
         print(f"[{datetime.now(timezone.utc)}] Warning: Failed to load seed data: {e}", flush=True)
 
+    seed_att_file = Path(__file__).resolve().parent.parent / "data" / "seed_attachments.json"
+    if seed_att_file.exists() and not state["attachments"]:
+        try:
+            with open(seed_att_file, "r", encoding="utf-8") as f:
+                raw_atts = json.load(f)
+            loaded_count = 0
+            for item in raw_atts:
+                eid = item.get("encrypt_id")
+                fname = item.get("filename")
+                b64 = item.get("content_b64")
+                if eid and b64:
+                    state["attachments"][eid] = {
+                        "filename": fname or f"KTU_Document_{eid[:6]}.pdf",
+                        "bytes": base64.b64decode(b64)
+                    }
+                    loaded_count += 1
+            if loaded_count:
+                print(f"[{datetime.now(timezone.utc)}] Seed attachments loaded: {loaded_count} files.", flush=True)
+        except Exception as e:
+            print(f"[{datetime.now(timezone.utc)}] Warning: Failed to load seed attachments: {e}", flush=True)
+
 
 def update_cache():
     """Run the scraper and update the in-memory cache."""
@@ -64,9 +86,9 @@ def update_cache():
     
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
-        # Protect against hung scraping threads by enforcing a 120s hard watchdog timeout
+        # Protect against hung scraping threads by enforcing a 180s hard watchdog timeout
         future = executor.submit(scrape_announcements)
-        results, token = future.result(timeout=120)
+        results, token, cached_attachments = future.result(timeout=180)
         
         # We no longer need the 'global' keyword because we are modifying a dict
         if results:
@@ -77,10 +99,23 @@ def update_cache():
         if token:
             state["x_token"] = token
             print(f"[{datetime.now(timezone.utc)}] x-token refreshed successfully.", flush=True)
+
+        if cached_attachments:
+            for ca in cached_attachments:
+                try:
+                    pdf_bytes = base64.b64decode(ca["content_b64"])
+                    state["attachments"][ca["encrypt_id"]] = {
+                        "filename": ca["filename"],
+                        "bytes": pdf_bytes
+                    }
+                except Exception as e:
+                    print(f"Error caching attachment {ca.get('encrypt_id')}: {e}", flush=True)
+            print(f"[{datetime.now(timezone.utc)}] Cached {len(cached_attachments)} attachments.", flush=True)
+
         state["last_error"] = None
             
     except concurrent.futures.TimeoutError:
-        error_msg = "Scraper execution timed out after 120 seconds."
+        error_msg = "Scraper execution timed out after 180 seconds."
         state["last_error"] = error_msg
         print(f"[{datetime.now(timezone.utc)}] {error_msg}", flush=True)
     except Exception as e:
